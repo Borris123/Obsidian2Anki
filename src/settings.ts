@@ -1,20 +1,26 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
-import MyPlugin from './main';
+import {
+	App,
+	PluginSettingTab,
+	Setting,
+} from "obsidian";
 
-export interface MyPluginSettings {
-	mySetting: string;
+import AnkiExporterPlugin from "./main";
+
+export interface AnkiExporterSettings {
+	ankiConnectUrl: string;
 }
 
-export const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default',
+export const DEFAULT_SETTINGS: AnkiExporterSettings = {
+	ankiConnectUrl: "http://127.0.0.1:8765",
 };
 
-export class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+export class AnkiExporterSettingTab extends PluginSettingTab {
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(
+		app: App,
+		private readonly plugin: AnkiExporterPlugin,
+	) {
 		super(app, plugin);
-		this.plugin = plugin;
 	}
 
 	display(): void {
@@ -23,14 +29,15 @@ export class SampleSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Settings #1')
-			.setDesc("It's a secret")
-			.addText((text) =>
+			.setName("AnkiConnect URL")
+			.setDesc("URL used to connect to AnkiConnect.")
+			.addText(text =>
 				text
-					.setPlaceholder('Enter your secret')
-					.setValue(this.plugin.settings.mySetting)
-					.onChange(async (value) => {
-						this.plugin.settings.mySetting = value;
+					.setPlaceholder("http://127.0.0.1:8765")
+					.setValue(this.plugin.settings.ankiConnectUrl)
+					.onChange(async value => {
+						this.plugin.settings.ankiConnectUrl = value;
+
 						await this.plugin.saveSettings();
 					}),
 			);
