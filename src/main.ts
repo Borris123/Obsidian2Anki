@@ -1,114 +1,161 @@
 import {
-	Editor,
-	MarkdownView,
-	MarkdownFileInfo,
-	Modal,
 	Notice,
 	Plugin,
-} from 'obsidian';
+} from "obsidian";
+
 import {
+	AnkiExporterSettings,
+	AnkiExporterSettingTab,
 	DEFAULT_SETTINGS,
-	MyPluginSettings,
-	SampleSettingTab,
-} from './settings';
+} from "./settings";
 
-// Remember to rename these classes and interfaces!
+import {
+	parseFlashcards,
+} from "./flashcards/flashcard-parser";
+import {AnkiClient} from "./anki/anki-client";
 
-export default class MyPlugin extends Plugin {
-	settings!: MyPluginSettings;
+export default class AnkiExporterPlugin extends Plugin {
 
-	async onload() {
+	settings: AnkiExporterSettings = DEFAULT_SETTINGS;
+
+	async onload(): Promise<void> {
 		await this.loadSettings();
 
-		// This creates an icon in the left ribbon.
-		this.addRibbonIcon('dice', 'Sample', (_evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
+		this.addSettingTab(
+			new AnkiExporterSettingTab(
+				this.app,
+				this,
+			),
+		);
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status bar text');
-
-		// This adds a simple command that can be triggered anywhere
 		this.addCommand({
-			id: 'open-modal-simple',
-			name: 'Open modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
+			id: "parse-current-note",
+			name: "Parse current note for Anki cards",
+
+			callback: async () => {
+				await this.parseCurrentNote();
 			},
 		});
-		// This adds an editor command that can perform some operation on the current editor instance
+
 		this.addCommand({
-			id: 'replace-selected',
-			name: 'Replace selected content',
-			editorCallback: (
-				editor: Editor,
-				_ctx: MarkdownView | MarkdownFileInfo,
-			) => {
-				editor.replaceSelection('Sample editor command');
+			id: "export-current-note-to-anki",
+			name: "Export current note to Anki",
+
+			callback: async () => {
+				await this.exportCurrentNote();
 			},
 		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-modal-complex',
-			name: 'Open modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView =
-					this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
 
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
+		this.addCommand({
+			id: "test-anki-connection",
+			name: "Test Anki connection",
+
+			callback: async () => {
+				const client = new AnkiClient(
+					this.settings.ankiConnectUrl,
+				);
+
+				try {
+					const decks =
+						await client.getDeckNames();
+
+					console.log(
+						"Anki decks:",
+						decks,
+					);
+
+					new Notice(
+						`Connected to Anki. Found ${decks.length} deck(s).`,
+					);
+				} catch (error) {
+					console.error(error);
+
+					new Notice(
+						"Could not connect to Anki.",
+					);
 				}
-				return false;
 			},
 		});
+	}
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+	private async parseCurrentNote(): Promise<void> {
+		const file = this.app.workspace.getActiveFile();
 
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(activeDocument, 'click', (_evt: MouseEvent) => {
-			new Notice('Click');
-		});
+		if (!file) {
+			new Notice("No note is currently open.");
+			return;
+		}
 
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(
-			window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000),
+		const markdown =
+			await this.app.vault.cachedRead(file);
+
+		const flashcards =
+			parseFlashcards(markdown);
+
+		console.log(
+			"Found flashcards:",
+			flashcards,
+		);
+
+		new Notice(
+			`Found ${flashcards.length} flashcard(s).`,
 		);
 	}
 
-	onunload() {}
+	private async exportCurrentNote(): Promise<void> {
+		const file = this.app.workspace.getActiveFile();
 
-	async loadSettings() {
+		if (!file) {
+			new Notice("No note is currently open.");
+			return;
+		}
+
+		const markdown =
+			await this.app.vault.cachedRead(file);
+
+		const flashcards =
+			parseFlashcards(markdown);
+
+		if (flashcards.length === 0) {
+			new Notice("No flashcards found.");
+			return;
+		}
+
+		const ankiClient = new AnkiClient(
+			this.settings.ankiConnectUrl,
+		);
+
+		try {
+			const noteIds =
+				await ankiClient.addFlashcards(
+					"Default",
+					flashcards,
+				);
+
+			new Notice(
+				`Exported ${noteIds.length} flashcard(s) to Anki.`,
+			);
+		} catch (error) {
+			console.error(
+				"Failed to export flashcards:",
+				error,
+			);
+
+			new Notice(
+				"Could not export flashcards to Anki.",
+			);
+		}
+	}
+
+	async loadSettings(): Promise<void> {
 		this.settings = Object.assign(
 			{},
 			DEFAULT_SETTINGS,
-			(await this.loadData()) as Partial<MyPluginSettings>,
+			await this.loadData(),
 		);
 	}
 
-	async saveSettings() {
+	async saveSettings(): Promise<void> {
 		await this.saveData(this.settings);
-	}
-}
-
-class SampleModal extends Modal {
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
 	}
 }
