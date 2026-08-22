@@ -1,0 +1,11 @@
+{
+	"id": "obsidian-anki-exporter",
+	"name": "Obsidian2Anki",
+	"version": "1.0.0",
+	"minAppVersion": "1.0.0",
+	"description": "Exports Obsidian Markdown to Anki Flashcards",
+	"author": "Erik Mielke",
+	"authorUrl": "https://obsidian.md",
+	"fundingUrl": "https://obsidian.md/pricing",
+	"isDesktopOnly": false
+}
