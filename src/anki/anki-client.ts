@@ -1,0 +1,68 @@
+import { requestUrl } from "obsidian";
+
+import { AnkiResponse } from "./anki-response";
+import {Flashcard} from "../flashcards/flashcard";
+
+export class AnkiClient {
+
+	constructor(
+		private readonly url: string,
+	) {}
+
+	private async invoke<T>(
+		action: string,
+		params: Record<string, unknown> = {},
+	): Promise<T> {
+
+		const response = await requestUrl({
+			url: this.url,
+			method: "POST",
+			contentType: "application/json",
+			body: JSON.stringify({
+				action,
+				version: 6,
+				params,
+			}),
+		});
+
+		const data =
+			response.json as AnkiResponse<T>;
+
+		if (data.error !== null) {
+			throw new Error(data.error);
+		}
+
+		return data.result;
+	}
+
+	async getDeckNames(): Promise<string[]> {
+		return this.invoke<string[]>(
+			"deckNames",
+		);
+	}
+
+	async addFlashcards(
+		deckName: string,
+		flashcards: Flashcard[],
+	): Promise<(number | null)[]> {
+
+		const notes = flashcards.map(flashcard => ({
+			deckName,
+			modelName: "Basic",
+			fields: {
+				Front: flashcard.front,
+				Back: flashcard.back,
+			},
+			tags: [
+				"obsidian",
+			],
+		}));
+
+		return this.invoke<(number | null)[]>(
+			"addNotes",
+			{
+				notes,
+			},
+		);
+	}
+}
