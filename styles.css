@@ -1,8 +1,36 @@
-/*
+.anki-export-modal .anki-export-summary {
+	margin-bottom: 1.25rem;
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.anki-export-modal .anki-export-field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	margin-bottom: 1.25rem;
+}
 
-If your plugin does not need CSS, delete this file.
+.anki-export-modal .anki-export-field label {
+	font-weight: 600;
+}
 
-*/
+.anki-export-modal .anki-export-field input,
+.anki-export-modal .anki-export-field select {
+	width: 100%;
+}
+
+.anki-export-modal .anki-export-create-row {
+	display: flex;
+	gap: 0.5rem;
+	flex-wrap: wrap;
+}
+
+.anki-export-modal .anki-export-create-row input {
+	flex: 1 1 250px;
+}
+
+.anki-export-modal .anki-export-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.5rem;
+	margin-top: 1.5rem;
+}
