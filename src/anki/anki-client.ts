@@ -1,7 +1,7 @@
 import { requestUrl } from "obsidian";
 
 import { AnkiResponse } from "./anki-response";
-import {Flashcard} from "../flashcards/flashcard";
+import { Flashcard } from "../flashcards/flashcard";
 
 export class AnkiClient {
 
@@ -41,24 +41,41 @@ export class AnkiClient {
 		);
 	}
 
+	async createDeck(
+		deckName: string,
+	): Promise<number> {
+		return this.invoke<number>(
+			"createDeck",
+			{
+				deck: deckName,
+			},
+		);
+	}
+
 	async addFlashcards(
 		deckName: string,
 		flashcards: Flashcard[],
 	): Promise<(number | null)[]> {
 
-		const notes = flashcards.map(flashcard => ({
-			deckName,
-			modelName: "Basic",
-			fields: {
-				Front: flashcard.front,
-				Back: flashcard.back,
-			},
-			tags: [
-				"obsidian",
-			],
-		}));
+		const notes = flashcards.map(
+			flashcard => ({
+				deckName,
+				modelName: "Basic",
 
-		return this.invoke<(number | null)[]>(
+				fields: {
+					Front: flashcard.front,
+					Back: flashcard.back,
+				},
+
+				tags: [
+					"obsidian",
+				],
+			}),
+		);
+
+		return this.invoke<
+			(number | null)[]
+		>(
 			"addNotes",
 			{
 				notes,

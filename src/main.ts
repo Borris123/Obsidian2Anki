@@ -12,11 +12,21 @@ import {
 import {
 	parseFlashcards,
 } from "./flashcards/flashcard-parser";
-import {AnkiClient} from "./anki/anki-client";
 
-export default class AnkiExporterPlugin extends Plugin {
+import {
+	AnkiClient,
+} from "./anki/anki-client";
 
-	settings: AnkiExporterSettings = DEFAULT_SETTINGS;
+import {
+	AnkiExportModal,
+} from "./ui/anki-export-modal";
+
+export default class AnkiExporterPlugin
+	extends Plugin {
+
+	settings: AnkiExporterSettings = {
+		...DEFAULT_SETTINGS,
+	};
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
@@ -28,134 +38,153 @@ export default class AnkiExporterPlugin extends Plugin {
 			),
 		);
 
-		this.addCommand({
-			id: "parse-current-note",
-			name: "Parse current note for Anki cards",
-
-			callback: async () => {
-				await this.parseCurrentNote();
+		this.addRibbonIcon(
+			"layers",
+			"Export current note to Anki",
+			async () => {
+				await this
+					.openExportModal();
 			},
-		});
+		);
 
 		this.addCommand({
 			id: "export-current-note-to-anki",
-			name: "Export current note to Anki",
+
+			name:
+				"Export current note to Anki",
 
 			callback: async () => {
-				await this.exportCurrentNote();
-			},
-		});
-
-		this.addCommand({
-			id: "test-anki-connection",
-			name: "Test Anki connection",
-
-			callback: async () => {
-				const client = new AnkiClient(
-					this.settings.ankiConnectUrl,
-				);
-
-				try {
-					const decks =
-						await client.getDeckNames();
-
-					console.log(
-						"Anki decks:",
-						decks,
-					);
-
-					new Notice(
-						`Connected to Anki. Found ${decks.length} deck(s).`,
-					);
-				} catch (error) {
-					console.error(error);
-
-					new Notice(
-						"Could not connect to Anki.",
-					);
-				}
+				await this
+					.openExportModal();
 			},
 		});
 	}
 
-	private async parseCurrentNote(): Promise<void> {
-		const file = this.app.workspace.getActiveFile();
+	private async openExportModal():
+		Promise<void> {
+
+		const file =
+			this.app.workspace
+				.getActiveFile();
 
 		if (!file) {
-			new Notice("No note is currently open.");
+			new Notice(
+				"No note is currently open.",
+			);
+
+			return;
+		}
+
+		if (file.extension !== "md") {
+			new Notice(
+				"The current file is not a Markdown note.",
+			);
+
 			return;
 		}
 
 		const markdown =
-			await this.app.vault.cachedRead(file);
+			await this.app.vault
+				.cachedRead(file);
 
 		const flashcards =
-			parseFlashcards(markdown);
+			parseFlashcards(
+				markdown,
+			);
 
-		console.log(
-			"Found flashcards:",
-			flashcards,
-		);
+		if (
+			flashcards.length === 0
+		) {
+			new Notice(
+				"No flashcards found in the current note.",
+			);
 
-		new Notice(
-			`Found ${flashcards.length} flashcard(s).`,
-		);
-	}
-
-	private async exportCurrentNote(): Promise<void> {
-		const file = this.app.workspace.getActiveFile();
-
-		if (!file) {
-			new Notice("No note is currently open.");
 			return;
 		}
 
-		const markdown =
-			await this.app.vault.cachedRead(file);
+		const ankiClient =
+			new AnkiClient(
+				this.settings
+					.ankiConnectUrl,
+			);
 
-		const flashcards =
-			parseFlashcards(markdown);
-
-		if (flashcards.length === 0) {
-			new Notice("No flashcards found.");
-			return;
-		}
-
-		const ankiClient = new AnkiClient(
-			this.settings.ankiConnectUrl,
-		);
+		let decks: string[];
 
 		try {
-			const noteIds =
-				await ankiClient.addFlashcards(
-					"Default",
-					flashcards,
-				);
+			decks =
+				await ankiClient
+					.getDeckNames();
 
-			new Notice(
-				`Exported ${noteIds.length} flashcard(s) to Anki.`,
-			);
 		} catch (error) {
 			console.error(
-				"Failed to export flashcards:",
+				"Could not connect to Anki:",
 				error,
 			);
 
 			new Notice(
-				"Could not export flashcards to Anki.",
+				"Could not connect to Anki. Is Anki running?",
 			);
+
+			return;
 		}
+
+		new AnkiExportModal(
+			this.app,
+
+			file.basename,
+
+			decks,
+
+			flashcards.length,
+
+			async deckName => {
+				const noteIds =
+					await ankiClient
+						.addFlashcards(
+							deckName,
+							flashcards,
+						);
+
+				const successfulImports =
+					noteIds.filter(
+						id => id !== null,
+					).length;
+
+				new Notice(
+					`Exported ` +
+					`${successfulImports}/` +
+					`${flashcards.length} ` +
+					`flashcard(s) to ` +
+					`"${deckName}".`,
+				);
+			},
+
+			async deckName => {
+				await ankiClient
+					.createDeck(
+						deckName,
+					);
+			},
+
+		).open();
 	}
 
-	async loadSettings(): Promise<void> {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			await this.loadData(),
+	async loadSettings():
+		Promise<void> {
+
+		this.settings =
+			Object.assign(
+				{},
+				DEFAULT_SETTINGS,
+				await this.loadData(),
+			);
+	}
+
+	async saveSettings():
+		Promise<void> {
+
+		await this.saveData(
+			this.settings,
 		);
-	}
-
-	async saveSettings(): Promise<void> {
-		await this.saveData(this.settings);
 	}
 }
