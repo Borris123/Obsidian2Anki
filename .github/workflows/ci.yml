@@ -1,0 +1,27 @@
+name: CI
+
+on:
+    pull_request:
+    push:
+        branches:
+            - main
+
+jobs:
+    build-and-test:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v6
+
+            - name: Build CI image
+              run: docker build -t obsidian2anki-ci .
+
+            - name: Lint
+              run: docker run --rm obsidian2anki-ci npm run lint
+
+            - name: Run unit tests
+              run: docker run --rm obsidian2anki-ci npm run test
+
+            - name: Build plugin
+              run: docker run --rm obsidian2anki-ci npm run build

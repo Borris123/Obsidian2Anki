@@ -169,15 +169,22 @@ export default class AnkiExporterPlugin
 		).open();
 	}
 
-	async loadSettings():
-		Promise<void> {
+	async loadSettings(): Promise<void> {
+		const loadedData: unknown = await this.loadData();
 
-		this.settings =
-			Object.assign(
-				{},
-				DEFAULT_SETTINGS,
-				await this.loadData(),
-			);
+		if (
+			typeof loadedData === "object" &&
+			loadedData !== null
+		) {
+			this.settings = {
+				...DEFAULT_SETTINGS,
+				...loadedData,
+			};
+		} else {
+			this.settings = {
+				...DEFAULT_SETTINGS,
+			};
+		}
 	}
 
 	async saveSettings():

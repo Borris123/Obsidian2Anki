@@ -231,14 +231,12 @@ export class AnkiExportModal extends Modal {
 		this.createDeckButton.type =
 			"button";
 
-		this.createDeckButton
-			.addEventListener(
-				"click",
-				async () => {
-					await this
-						.handleCreateDeck();
-				},
-			);
+		this.createDeckButton.addEventListener(
+			"click",
+			() => {
+				void this.handleCreateDeck();
+			},
+		);
 	}
 
 	private async handleCreateDeck():
@@ -371,14 +369,12 @@ export class AnkiExportModal extends Modal {
 		this.exportButton.type =
 			"button";
 
-		this.exportButton
-			.addEventListener(
-				"click",
-				async () => {
-					await this
-						.handleExport();
-				},
-			);
+		this.exportButton.addEventListener(
+			"click",
+			() => {
+				void this.handleExport();
+			},
+		);
 
 		this.updateExportButton();
 	}
