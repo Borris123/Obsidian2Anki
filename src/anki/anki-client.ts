@@ -2,6 +2,7 @@ import { requestUrl } from "obsidian";
 
 import { AnkiResponse } from "./anki-response";
 import { Flashcard } from "../flashcards/flashcard";
+import {AnkiNote} from "./anki-note";
 
 export class AnkiClient {
 
@@ -79,6 +80,38 @@ export class AnkiClient {
 			"addNotes",
 			{
 				notes,
+			},
+		);
+	}
+
+	async updateFlashcard(
+		noteId: number,
+		flashcard: Flashcard,
+	): Promise<void> {
+
+		await this.invoke<null>(
+			"updateNoteFields",
+			{
+				note: {
+					id: noteId,
+
+					fields: {
+						Front: flashcard.front,
+						Back: flashcard.back,
+					},
+				},
+			},
+		);
+	}
+
+	async getNotes(
+		noteIds: number[],
+	): Promise<AnkiNote[]> {
+
+		return this.invoke<AnkiNote[]>(
+			"notesInfo",
+			{
+				notes: noteIds,
 			},
 		);
 	}

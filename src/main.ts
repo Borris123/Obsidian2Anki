@@ -14,6 +14,10 @@ import {
 } from "./flashcards/flashcard-parser";
 
 import {
+	addAnkiNoteIdsToMarkdown,
+} from "./flashcards/flashcard-markdown";
+
+import {
 	AnkiClient,
 } from "./anki/anki-client";
 
@@ -42,8 +46,7 @@ export default class AnkiExporterPlugin
 			"layers",
 			"Export current note to Anki",
 			async () => {
-				await this
-					.openExportModal();
+				await this.openExportModal();
 			},
 		);
 
@@ -54,8 +57,7 @@ export default class AnkiExporterPlugin
 				"Export current note to Anki",
 
 			callback: async () => {
-				await this
-					.openExportModal();
+				await this.openExportModal();
 			},
 		});
 	}
@@ -92,9 +94,7 @@ export default class AnkiExporterPlugin
 				markdown,
 			);
 
-		if (
-			flashcards.length === 0
-		) {
+		if (flashcards.length === 0) {
 			new Notice(
 				"No flashcards found in the current note.",
 			);
@@ -138,24 +138,54 @@ export default class AnkiExporterPlugin
 			flashcards.length,
 
 			async deckName => {
+
+				const newFlashcards =
+					flashcards.filter(
+						flashcard =>
+							flashcard.ankiNoteId ===
+							undefined,
+					);
+
+				if (newFlashcards.length === 0) {
+					new Notice(
+						"All flashcards are already linked to Anki.",
+					);
+
+					return;
+				}
+
 				const noteIds =
 					await ankiClient
 						.addFlashcards(
 							deckName,
-							flashcards,
+							newFlashcards,
 						);
+
+				const updatedMarkdown =
+					addAnkiNoteIdsToMarkdown(
+						markdown,
+						noteIds,
+					);
+
+				await this.app.vault.modify(
+					file,
+					updatedMarkdown,
+				);
 
 				const successfulImports =
 					noteIds.filter(
 						id => id !== null,
 					).length;
 
+				const alreadyLinked =
+					flashcards.length -
+					newFlashcards.length;
+
 				new Notice(
-					`Exported ` +
-					`${successfulImports}/` +
-					`${flashcards.length} ` +
-					`flashcard(s) to ` +
-					`"${deckName}".`,
+					`Created ${successfulImports}/` +
+					`${newFlashcards.length} ` +
+					`new flashcard(s). ` +
+					`${alreadyLinked} already linked.`,
 				);
 			},
 
@@ -170,7 +200,8 @@ export default class AnkiExporterPlugin
 	}
 
 	async loadSettings(): Promise<void> {
-		const loadedData: unknown = await this.loadData();
+		const loadedData: unknown =
+			await this.loadData();
 
 		if (
 			typeof loadedData === "object" &&
