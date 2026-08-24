@@ -14,17 +14,16 @@ import {
 } from "./flashcards/flashcard-parser";
 
 import {
-	addAnkiNoteIdsToMarkdown,
-} from "./flashcards/flashcard-markdown";
-
-import {
 	AnkiClient,
 } from "./anki/anki-client";
 
 import {
 	AnkiExportModal,
 } from "./ui/anki-export-modal";
-import {hasFlashcardChanged} from "./flashcards/flashcard-sync";
+
+import {
+	syncFlashcards,
+} from "./sync/sync-flashcards";
 
 export default class AnkiExporterPlugin
 	extends Plugin {
@@ -52,7 +51,8 @@ export default class AnkiExporterPlugin
 		);
 
 		this.addCommand({
-			id: "export-current-note-to-anki",
+			id:
+				"export-current-note-to-anki",
 
 			name:
 				"Export current note to Anki",
@@ -139,144 +139,84 @@ export default class AnkiExporterPlugin
 			flashcards.length,
 
 			async deckName => {
-
-				const newFlashcards =
-					flashcards.filter(
-						flashcard =>
-							flashcard.ankiNoteId ===
-							undefined,
-					);
-
-				const existingFlashcards =
-					flashcards.filter(
-						flashcard =>
-							flashcard.ankiNoteId !==
-							undefined,
-					);
-
-				const existingNoteIds =
-					existingFlashcards.map(
-						flashcard =>
-							flashcard.ankiNoteId!,
-					);
-
-				const ankiNotes =
-					existingNoteIds.length > 0
-						? await ankiClient.getNotes(
-							existingNoteIds,
-						)
-						: [];
-
-				const ankiNotesById =
-					new Map(
-						ankiNotes.map(
-							note => [
-								note.noteId,
-								note,
-							],
-						),
-					);
-
-				let updatedCount = 0;
-				let unchangedCount = 0;
-				let missingCount = 0;
-
-				for (
-					const flashcard
-					of existingFlashcards
-					) {
-
-					const noteId =
-						flashcard.ankiNoteId!;
-
-					const ankiNote =
-						ankiNotesById.get(
-							noteId,
+				try {
+					const result =
+						await syncFlashcards(
+							ankiClient,
+							deckName,
+							markdown,
+							flashcards,
 						);
-
-					if (!ankiNote) {
-						missingCount++;
-
-						continue;
-					}
 
 					if (
-						!hasFlashcardChanged(
-							flashcard,
-							ankiNote,
-						)
+						result.updatedMarkdown !==
+						markdown
 					) {
-						unchangedCount++;
-
-						continue;
+						await this.app.vault
+							.modify(
+								file,
+								result.updatedMarkdown,
+							);
 					}
 
-					await ankiClient
-						.updateFlashcard(
-							noteId,
-							flashcard,
-						);
+					let message =
+						"Sync complete: " +
+						`${result.created} created, ` +
+						`${result.updated} updated, ` +
+						`${result.unchanged} unchanged`;
 
-					updatedCount++;
-				}
+					if (
+						result.missing > 0
+					) {
+						message +=
+							`, ${result.missing} missing`;
+					}
 
-				let createdCount = 0;
+					message += ".";
 
-				if (newFlashcards.length > 0) {
+					new Notice(
+						message,
+					);
 
-					const noteIds =
-						await ankiClient
-							.addFlashcards(
-								deckName,
-								newFlashcards,
-							);
+				} catch (error) {
+					console.error(
+						"Could not sync flashcards:",
+						error,
+					);
 
-					createdCount =
-						noteIds.filter(
-							id => id !== null,
-						).length;
-
-					const updatedMarkdown =
-						addAnkiNoteIdsToMarkdown(
-							markdown,
-							noteIds,
-						);
-
-					await this.app.vault.modify(
-						file,
-						updatedMarkdown,
+					new Notice(
+						"Could not sync flashcards with Anki.",
 					);
 				}
-
-				let message =
-					`Sync complete: ` +
-					`${createdCount} created, ` +
-					`${updatedCount} updated, ` +
-					`${unchangedCount} unchanged`;
-
-				if (missingCount > 0) {
-					message +=
-						`, ${missingCount} missing`;
-				}
-
-				message += ".";
-
-				new Notice(
-					message,
-				);
 			},
 
 			async deckName => {
-				await ankiClient
-					.createDeck(
-						deckName,
+				try {
+					await ankiClient
+						.createDeck(
+							deckName,
+						);
+
+				} catch (error) {
+					console.error(
+						"Could not create Anki deck:",
+						error,
 					);
+
+					new Notice(
+						"Could not create the Anki deck.",
+					);
+
+					throw error;
+				}
 			},
 
 		).open();
 	}
 
-	async loadSettings(): Promise<void> {
+	async loadSettings():
+		Promise<void> {
+
 		const loadedData: unknown =
 			await this.loadData();
 
@@ -288,6 +228,7 @@ export default class AnkiExporterPlugin
 				...DEFAULT_SETTINGS,
 				...loadedData,
 			};
+
 		} else {
 			this.settings = {
 				...DEFAULT_SETTINGS,

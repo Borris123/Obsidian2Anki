@@ -20,8 +20,22 @@ jobs:
             - name: Lint
               run: docker run --rm obsidian2anki-ci npm run lint
 
-            - name: Run unit tests
-              run: docker run --rm obsidian2anki-ci npm run test
+            - name: Create coverage directory
+              run: mkdir -p coverage
+
+            - name: Run tests with coverage
+              run: |
+                  docker run --rm \
+                    -v "${{ github.workspace }}/coverage:/app/coverage" \
+                    obsidian2anki-ci \
+                    npm run test:coverage
+
+            - name: Upload coverage to Codecov
+              uses: codecov/codecov-action@v7
+              with:
+                  token: ${{ secrets.CODECOV_TOKEN }}
+                  files: ./coverage/report/lcov.info
+                  fail_ci_if_error: true
 
             - name: Build plugin
               run: docker run --rm obsidian2anki-ci npm run build

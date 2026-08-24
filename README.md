@@ -1,5 +1,7 @@
 # Obsidian2Anki
 
+[![codecov](https://codecov.io/gh/Borris123/Obsidian2Anki/branch/main/graph/badge.svg)](https://codecov.io/gh/Borris123/Obsidian2Anki)
+
 Obsidian2Anki is an Obsidian plugin that exports flashcards from Markdown notes directly to Anki.
 
 Flashcards are defined using a simple key-value syntax:
