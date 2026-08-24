@@ -35,7 +35,7 @@ jobs:
               uses: codecov/codecov-action@v7
               with:
                   token: ${{ secrets.CODECOV_TOKEN }}
-                  files: ./coverage/lcov.info
+                  files: ./coverage/report/lcov.info
                   fail_ci_if_error: true
 
             - name: Build plugin
