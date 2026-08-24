@@ -14,12 +14,17 @@ import {
 } from "./flashcards/flashcard-parser";
 
 import {
+	addAnkiNoteIdsToMarkdown,
+} from "./flashcards/flashcard-markdown";
+
+import {
 	AnkiClient,
 } from "./anki/anki-client";
 
 import {
 	AnkiExportModal,
 } from "./ui/anki-export-modal";
+import {hasFlashcardChanged} from "./flashcards/flashcard-sync";
 
 export default class AnkiExporterPlugin
 	extends Plugin {
@@ -42,8 +47,7 @@ export default class AnkiExporterPlugin
 			"layers",
 			"Export current note to Anki",
 			async () => {
-				await this
-					.openExportModal();
+				await this.openExportModal();
 			},
 		);
 
@@ -54,8 +58,7 @@ export default class AnkiExporterPlugin
 				"Export current note to Anki",
 
 			callback: async () => {
-				await this
-					.openExportModal();
+				await this.openExportModal();
 			},
 		});
 	}
@@ -92,9 +95,7 @@ export default class AnkiExporterPlugin
 				markdown,
 			);
 
-		if (
-			flashcards.length === 0
-		) {
+		if (flashcards.length === 0) {
 			new Notice(
 				"No flashcards found in the current note.",
 			);
@@ -138,24 +139,130 @@ export default class AnkiExporterPlugin
 			flashcards.length,
 
 			async deckName => {
-				const noteIds =
-					await ankiClient
-						.addFlashcards(
-							deckName,
-							flashcards,
+
+				const newFlashcards =
+					flashcards.filter(
+						flashcard =>
+							flashcard.ankiNoteId ===
+							undefined,
+					);
+
+				const existingFlashcards =
+					flashcards.filter(
+						flashcard =>
+							flashcard.ankiNoteId !==
+							undefined,
+					);
+
+				const existingNoteIds =
+					existingFlashcards.map(
+						flashcard =>
+							flashcard.ankiNoteId!,
+					);
+
+				const ankiNotes =
+					existingNoteIds.length > 0
+						? await ankiClient.getNotes(
+							existingNoteIds,
+						)
+						: [];
+
+				const ankiNotesById =
+					new Map(
+						ankiNotes.map(
+							note => [
+								note.noteId,
+								note,
+							],
+						),
+					);
+
+				let updatedCount = 0;
+				let unchangedCount = 0;
+				let missingCount = 0;
+
+				for (
+					const flashcard
+					of existingFlashcards
+					) {
+
+					const noteId =
+						flashcard.ankiNoteId!;
+
+					const ankiNote =
+						ankiNotesById.get(
+							noteId,
 						);
 
-				const successfulImports =
-					noteIds.filter(
-						id => id !== null,
-					).length;
+					if (!ankiNote) {
+						missingCount++;
+
+						continue;
+					}
+
+					if (
+						!hasFlashcardChanged(
+							flashcard,
+							ankiNote,
+						)
+					) {
+						unchangedCount++;
+
+						continue;
+					}
+
+					await ankiClient
+						.updateFlashcard(
+							noteId,
+							flashcard,
+						);
+
+					updatedCount++;
+				}
+
+				let createdCount = 0;
+
+				if (newFlashcards.length > 0) {
+
+					const noteIds =
+						await ankiClient
+							.addFlashcards(
+								deckName,
+								newFlashcards,
+							);
+
+					createdCount =
+						noteIds.filter(
+							id => id !== null,
+						).length;
+
+					const updatedMarkdown =
+						addAnkiNoteIdsToMarkdown(
+							markdown,
+							noteIds,
+						);
+
+					await this.app.vault.modify(
+						file,
+						updatedMarkdown,
+					);
+				}
+
+				let message =
+					`Sync complete: ` +
+					`${createdCount} created, ` +
+					`${updatedCount} updated, ` +
+					`${unchangedCount} unchanged`;
+
+				if (missingCount > 0) {
+					message +=
+						`, ${missingCount} missing`;
+				}
+
+				message += ".";
 
 				new Notice(
-					`Exported ` +
-					`${successfulImports}/` +
-					`${flashcards.length} ` +
-					`flashcard(s) to ` +
-					`"${deckName}".`,
+					message,
 				);
 			},
 
@@ -170,7 +277,8 @@ export default class AnkiExporterPlugin
 	}
 
 	async loadSettings(): Promise<void> {
-		const loadedData: unknown = await this.loadData();
+		const loadedData: unknown =
+			await this.loadData();
 
 		if (
 			typeof loadedData === "object" &&
