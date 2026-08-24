@@ -12,101 +12,317 @@ import type {
 	PluginManifest,
 } from "obsidian";
 
-/*
- * vi.mock() is hoisted by Vitest.
- * Therefore shared mocks must also be hoisted.
- */
+import type {
+	Flashcard,
+} from "./flashcards/flashcard";
+
+
+interface TestFile {
+	extension: string;
+	basename: string;
+}
+
+interface TestApp {
+	workspace: {
+		getActiveFile:
+			ReturnType<
+				typeof vi.fn<
+					() => TestFile | null
+				>
+			>;
+	};
+
+	vault: {
+		cachedRead:
+			ReturnType<
+				typeof vi.fn<
+					(
+						file: TestFile,
+					) => Promise<string>
+				>
+			>;
+
+		modify:
+			ReturnType<
+				typeof vi.fn<
+					(
+						file: TestFile,
+						content: string,
+					) => Promise<void>
+				>
+			>;
+	};
+}
+
+interface TestSyncResult {
+	created: number;
+	updated: number;
+	unchanged: number;
+	missing: number;
+	updatedMarkdown: string;
+}
+
+interface RegisteredCommand {
+	id: string;
+	name: string;
+	callback: () => Promise<void>;
+}
+
+type RibbonCallback =
+	() => Promise<void>;
+
+type ExportCallback =
+	(deckName: string) =>
+		Promise<void>;
+
+type CreateDeckCallback =
+	(deckName: string) =>
+		Promise<void>;
+
+type AddSettingTabMock =
+	(tab: unknown) => void;
+
+type AddRibbonIconMock =
+	(
+		icon: string,
+		title: string,
+		callback: RibbonCallback,
+	) => void;
+
+type AddCommandMock =
+	(command: RegisteredCommand) =>
+		void;
+
+type LoadDataMock =
+	() => Promise<unknown>;
+
+type SaveDataMock =
+	(data: unknown) =>
+		Promise<void>;
+
+type SettingTabConstructorMock =
+	(
+		app: unknown,
+		plugin: unknown,
+	) => void;
+
+type ParseFlashcardsMock =
+	(markdown: string) =>
+		Flashcard[];
+
+type AnkiClientConstructorMock =
+	(url: string) => void;
+
+type GetDeckNamesMock =
+	() => Promise<string[]>;
+
+type CreateDeckMock =
+	(deckName: string) =>
+		Promise<number>;
+
+type SyncFlashcardsMock =
+	(
+		ankiClient: unknown,
+		deckName: string,
+		markdown: string,
+		flashcards: Flashcard[],
+	) => Promise<TestSyncResult>;
+
+type ModalConstructorMock =
+	(
+		app: unknown,
+		noteName: string,
+		decks: string[],
+		flashcardCount: number,
+		onExport: ExportCallback,
+		onCreateDeck: CreateDeckCallback,
+	) => void;
+
+
 const mocks = vi.hoisted(() => ({
-	notice: vi.fn(),
+	notice:
+		vi.fn<
+			(message: string) => void
+		>(),
 
-	addSettingTab: vi.fn(),
-	addRibbonIcon: vi.fn(),
-	addCommand: vi.fn(),
+	addSettingTab:
+		vi.fn<
+			AddSettingTabMock
+		>(),
 
-	loadData: vi.fn(),
-	saveData: vi.fn(),
+	addRibbonIcon:
+		vi.fn<
+			AddRibbonIconMock
+		>(),
 
-	settingTabConstructor: vi.fn(),
+	addCommand:
+		vi.fn<
+			AddCommandMock
+		>(),
 
-	parseFlashcards: vi.fn(),
+	loadData:
+		vi.fn<
+			LoadDataMock
+		>(),
 
-	ankiClientConstructor: vi.fn(),
-	getDeckNames: vi.fn(),
-	createDeck: vi.fn(),
+	saveData:
+		vi.fn<
+			SaveDataMock
+		>(),
 
-	syncFlashcards: vi.fn(),
+	settingTabConstructor:
+		vi.fn<
+			SettingTabConstructorMock
+		>(),
 
-	modalConstructor: vi.fn(),
-	modalOpen: vi.fn(),
+	parseFlashcards:
+		vi.fn<
+			ParseFlashcardsMock
+		>(),
+
+	ankiClientConstructor:
+		vi.fn<
+			AnkiClientConstructorMock
+		>(),
+
+	getDeckNames:
+		vi.fn<
+			GetDeckNamesMock
+		>(),
+
+	createDeck:
+		vi.fn<
+			CreateDeckMock
+		>(),
+
+	syncFlashcards:
+		vi.fn<
+			SyncFlashcardsMock
+		>(),
+
+	modalConstructor:
+		vi.fn<
+			ModalConstructorMock
+		>(),
+
+	modalOpen:
+		vi.fn<
+			() => void
+		>(),
 }));
 
-/*
- * Mock the Obsidian runtime.
- */
-vi.mock("obsidian", () => {
 
-	class Plugin {
-		app: App;
+vi.mock(
+	"obsidian",
+	() => {
 
-		constructor(
-			app: App,
-		) {
-			this.app = app;
+		class Plugin {
+
+			app: unknown;
+
+			constructor(
+				app: unknown,
+			) {
+				this.app =
+					app;
+			}
+
+			addSettingTab(
+				tab: unknown,
+			): void {
+				mocks.addSettingTab(
+					tab,
+				);
+			}
+
+			addRibbonIcon(
+				icon: string,
+				title: string,
+				callback:
+				RibbonCallback,
+			): void {
+				mocks.addRibbonIcon(
+					icon,
+					title,
+					callback,
+				);
+			}
+
+			addCommand(
+				command:
+				RegisteredCommand,
+			): void {
+				mocks.addCommand(
+					command,
+				);
+			}
+
+			loadData():
+				Promise<unknown> {
+
+				return mocks
+					.loadData();
+			}
+
+			saveData(
+				data: unknown,
+			): Promise<void> {
+
+				return mocks
+					.saveData(
+						data,
+					);
+			}
 		}
 
-		addSettingTab =
-			mocks.addSettingTab;
+		class Notice {
 
-		addRibbonIcon =
-			mocks.addRibbonIcon;
-
-		addCommand =
-			mocks.addCommand;
-
-		loadData =
-			mocks.loadData;
-
-		saveData =
-			mocks.saveData;
-	}
-
-	class Notice {
-		constructor(
-			message: string,
-		) {
-			mocks.notice(
-				message,
-			);
+			constructor(
+				message: string,
+			) {
+				mocks.notice(
+					message,
+				);
+			}
 		}
-	}
 
-	return {
-		Plugin,
-		Notice,
-	};
-});
+		return {
+			Plugin,
+			Notice,
+		};
+	},
+);
 
-vi.mock("./settings", () => {
 
-	class AnkiExporterSettingTab {
-		constructor(
-			...args: unknown[]
-		) {
-			mocks.settingTabConstructor(
-				...args,
-			);
+vi.mock(
+	"./settings",
+	() => {
+
+		class AnkiExporterSettingTab {
+
+			constructor(
+				app: unknown,
+				plugin: unknown,
+			) {
+				mocks
+					.settingTabConstructor(
+						app,
+						plugin,
+					);
+			}
 		}
-	}
 
-	return {
-		DEFAULT_SETTINGS: {
-			ankiConnectUrl:
-				"http://127.0.0.1:8765",
-		},
+		return {
+			DEFAULT_SETTINGS: {
+				ankiConnectUrl:
+					"http://127.0.0.1:8765",
+			},
 
-		AnkiExporterSettingTab,
-	};
-});
+			AnkiExporterSettingTab,
+		};
+	},
+);
+
 
 vi.mock(
 	"./flashcards/flashcard-parser",
@@ -116,6 +332,7 @@ vi.mock(
 	}),
 );
 
+
 vi.mock(
 	"./sync/sync-flashcards",
 	() => ({
@@ -123,6 +340,7 @@ vi.mock(
 		mocks.syncFlashcards,
 	}),
 );
+
 
 vi.mock(
 	"./anki/anki-client",
@@ -139,11 +357,22 @@ vi.mock(
 					);
 			}
 
-			getDeckNames =
-				mocks.getDeckNames;
+			getDeckNames():
+				Promise<string[]> {
 
-			createDeck =
-				mocks.createDeck;
+				return mocks
+					.getDeckNames();
+			}
+
+			createDeck(
+				deckName: string,
+			): Promise<number> {
+
+				return mocks
+					.createDeck(
+						deckName,
+					);
+			}
 		}
 
 		return {
@@ -152,6 +381,7 @@ vi.mock(
 	},
 );
 
+
 vi.mock(
 	"./ui/anki-export-modal",
 	() => {
@@ -159,10 +389,22 @@ vi.mock(
 		class AnkiExportModal {
 
 			constructor(
-				...args: unknown[]
+				app: unknown,
+				noteName: string,
+				decks: string[],
+				flashcardCount: number,
+				onExport:
+				ExportCallback,
+				onCreateDeck:
+				CreateDeckCallback,
 			) {
 				mocks.modalConstructor(
-					...args,
+					app,
+					noteName,
+					decks,
+					flashcardCount,
+					onExport,
+					onCreateDeck,
 				);
 			}
 
@@ -177,27 +419,10 @@ vi.mock(
 	},
 );
 
+
 import AnkiExporterPlugin
 	from "./main";
 
-interface TestApp {
-	workspace: {
-		getActiveFile:
-			ReturnType<typeof vi.fn>;
-	};
-
-	vault: {
-		cachedRead:
-			ReturnType<typeof vi.fn>;
-
-		modify:
-			ReturnType<typeof vi.fn>;
-	};
-}
-
-type ExportCallback =
-	(deckName: string) =>
-		Promise<void>;
 
 function createApp():
 	TestApp {
@@ -205,18 +430,36 @@ function createApp():
 	return {
 		workspace: {
 			getActiveFile:
-				vi.fn(),
+				vi.fn<
+					() =>
+						TestFile | null
+				>(),
 		},
 
 		vault: {
 			cachedRead:
-				vi.fn(),
+				vi.fn<
+					(
+						file:
+						TestFile,
+					) =>
+						Promise<string>
+				>(),
 
 			modify:
-				vi.fn(),
+				vi.fn<
+					(
+						file:
+						TestFile,
+						content:
+						string,
+					) =>
+						Promise<void>
+				>(),
 		},
 	};
 }
+
 
 function createPlugin(
 	app: TestApp,
@@ -228,48 +471,75 @@ function createPlugin(
 	);
 }
 
+
 function getCommandCallback():
 	() => Promise<void> {
 
-	const command =
+	const commandCall =
 		mocks.addCommand
-			.mock.calls[0]![0] as {
-			callback:
-				() => Promise<void>;
-		};
+			.mock.calls[0];
 
-	return command.callback;
+	if (!commandCall) {
+		throw new Error(
+			"Command was not registered.",
+		);
+	}
+
+	return commandCall[0]
+		.callback;
 }
+
 
 function getRibbonCallback():
-	() => Promise<void> {
+	RibbonCallback {
 
-	return mocks.addRibbonIcon
-		.mock.calls[0]![2] as
-		() => Promise<void>;
-}
+	const ribbonCall =
+		mocks.addRibbonIcon
+			.mock.calls[0];
 
-function getExportCallback(): ExportCallback {
-	const modalCall =
-		mocks.modalConstructor.mock.calls.at(-1);
-
-	if (!modalCall) {
-		throw new Error("Modal constructor was not called");
+	if (!ribbonCall) {
+		throw new Error(
+			"Ribbon action was not registered.",
+		);
 	}
 
-	return modalCall[4] as ExportCallback;
+	return ribbonCall[2];
 }
 
-function getCreateDeckCallback(): ExportCallback {
+
+function getModalCall():
+	Parameters<
+		ModalConstructorMock
+	> {
+
 	const modalCall =
-		mocks.modalConstructor.mock.calls.at(-1);
+		mocks.modalConstructor
+			.mock.calls
+			.at(-1);
 
 	if (!modalCall) {
-		throw new Error("Modal constructor was not called");
+		throw new Error(
+			"Export modal was not created.",
+		);
 	}
 
-	return modalCall[5] as ExportCallback;
+	return modalCall;
 }
+
+
+function getExportCallback():
+	ExportCallback {
+
+	return getModalCall()[4];
+}
+
+
+function getCreateDeckCallback():
+	CreateDeckCallback {
+
+	return getModalCall()[5];
+}
+
 
 describe(
 	"AnkiExporterPlugin",
@@ -277,23 +547,31 @@ describe(
 
 		let app: TestApp;
 
-		const file = {
+		const file:
+			TestFile = {
+
 			extension: "md",
-			basename: "algorithms",
+			basename:
+				"algorithms",
 		};
 
 		const markdown =
 			"Array :: Collection";
 
-		const flashcards = [
+		const flashcards:
+			Flashcard[] = [
 			{
-				front: "Array",
-				back: "Collection",
+				front:
+					"Array",
+
+				back:
+					"Collection",
 			},
 		];
 
 		beforeEach(() => {
-			vi.clearAllMocks();
+
+			vi.resetAllMocks();
 
 			app =
 				createApp();
@@ -310,7 +588,18 @@ describe(
 					markdown,
 				);
 
+			app.vault
+				.modify
+				.mockResolvedValue(
+					undefined,
+				);
+
 			mocks.loadData
+				.mockResolvedValue(
+					undefined,
+				);
+
+			mocks.saveData
 				.mockResolvedValue(
 					undefined,
 				);
@@ -337,6 +626,7 @@ describe(
 					updated: 0,
 					unchanged: 1,
 					missing: 0,
+
 					updatedMarkdown:
 					markdown,
 				});
@@ -349,9 +639,11 @@ describe(
 			);
 		});
 
+
 		afterEach(() => {
 			vi.restoreAllMocks();
 		});
+
 
 		it(
 			"loads settings and registers plugin actions",
@@ -372,32 +664,76 @@ describe(
 					mocks.addSettingTab,
 				).toHaveBeenCalledOnce();
 
+				const ribbonCall =
+					mocks
+						.addRibbonIcon
+						.mock.calls[0];
+
 				expect(
-					mocks.addRibbonIcon,
-				).toHaveBeenCalledWith(
+					ribbonCall,
+				).toBeDefined();
+
+				if (!ribbonCall) {
+					throw new Error(
+						"Ribbon action was not registered.",
+					);
+				}
+
+				expect(
+					ribbonCall[0],
+				).toBe(
 					"layers",
-					"Export current note to Anki",
-					expect.any(
-						Function,
-					),
 				);
 
 				expect(
-					mocks.addCommand,
-				).toHaveBeenCalledWith({
-					id:
-						"export-current-note-to-anki",
+					ribbonCall[1],
+				).toBe(
+					"Export current note to Anki",
+				);
 
-					name:
-						"Export current note to Anki",
+				expect(
+					typeof ribbonCall[2],
+				).toBe(
+					"function",
+				);
 
-					callback:
-						expect.any(
-							Function,
-						),
-				});
+				const commandCall =
+					mocks.addCommand
+						.mock.calls[0];
+
+				expect(
+					commandCall,
+				).toBeDefined();
+
+				if (!commandCall) {
+					throw new Error(
+						"Command was not registered.",
+					);
+				}
+
+				const command =
+					commandCall[0];
+
+				expect(
+					command.id,
+				).toBe(
+					"export-current-note-to-anki",
+				);
+
+				expect(
+					command.name,
+				).toBe(
+					"Export current note to Anki",
+				);
+
+				expect(
+					typeof command.callback,
+				).toBe(
+					"function",
+				);
 			},
 		);
+
 
 		it(
 			"shows a notice when no note is open",
@@ -425,10 +761,13 @@ describe(
 				);
 
 				expect(
-					app.vault.cachedRead,
-				).not.toHaveBeenCalled();
+					app.vault
+						.cachedRead,
+				).not
+					.toHaveBeenCalled();
 			},
 		);
+
 
 		it(
 			"shows a notice when the active file is not Markdown",
@@ -437,7 +776,9 @@ describe(
 				app.workspace
 					.getActiveFile
 					.mockReturnValue({
-						extension: "pdf",
+						extension:
+							"pdf",
+
 						basename:
 							"document",
 					});
@@ -458,10 +799,13 @@ describe(
 				);
 
 				expect(
-					app.vault.cachedRead,
-				).not.toHaveBeenCalled();
+					app.vault
+						.cachedRead,
+				).not
+					.toHaveBeenCalled();
 			},
 		);
+
 
 		it(
 			"shows a notice when no flashcards are found",
@@ -495,9 +839,11 @@ describe(
 
 				expect(
 					mocks.getDeckNames,
-				).not.toHaveBeenCalled();
+				).not
+					.toHaveBeenCalled();
 			},
 		);
+
 
 		it(
 			"shows an error when Anki cannot be reached",
@@ -527,18 +873,11 @@ describe(
 
 				expect(
 					mocks.modalOpen,
-				).not.toHaveBeenCalled();
-
-				expect(
-					console.error,
-				).toHaveBeenCalledWith(
-					"Could not connect to Anki:",
-					expect.any(
-						Error,
-					),
-				);
+				).not
+					.toHaveBeenCalled();
 			},
 		);
+
 
 		it(
 			"opens the export modal with available decks",
@@ -560,22 +899,36 @@ describe(
 					"http://127.0.0.1:8765",
 				);
 
+				const modalCall =
+					getModalCall();
+
 				expect(
-					mocks.modalConstructor,
-				).toHaveBeenCalledWith(
-					expect.anything(),
+					modalCall[1],
+				).toBe(
 					"algorithms",
-					[
-						"Default",
-						"Computer Science",
-					],
-					1,
-					expect.any(
-						Function,
-					),
-					expect.any(
-						Function,
-					),
+				);
+
+				expect(
+					modalCall[2],
+				).toEqual([
+					"Default",
+					"Computer Science",
+				]);
+
+				expect(
+					modalCall[3],
+				).toBe(1);
+
+				expect(
+					typeof modalCall[4],
+				).toBe(
+					"function",
+				);
+
+				expect(
+					typeof modalCall[5],
+				).toBe(
+					"function",
 				);
 
 				expect(
@@ -583,6 +936,7 @@ describe(
 				).toHaveBeenCalledOnce();
 			},
 		);
+
 
 		it(
 			"also opens the export modal through the ribbon action",
@@ -603,6 +957,7 @@ describe(
 			},
 		);
 
+
 		it(
 			"syncs flashcards when export is confirmed",
 			async () => {
@@ -616,23 +971,44 @@ describe(
 
 				await getCommandCallback()();
 
-				const exportCallback =
-					getExportCallback();
+				await getExportCallback()(
+					"Computer Science",
+				);
 
-				await exportCallback(
+				const syncCall =
+					mocks.syncFlashcards
+						.mock.calls[0];
+
+				expect(
+					syncCall,
+				).toBeDefined();
+
+				if (!syncCall) {
+					throw new Error(
+						"Sync was not called.",
+					);
+				}
+
+				expect(
+					syncCall[1],
+				).toBe(
 					"Computer Science",
 				);
 
 				expect(
-					mocks.syncFlashcards,
-				).toHaveBeenCalledWith(
-					expect.anything(),
-					"Computer Science",
+					syncCall[2],
+				).toBe(
 					markdown,
+				);
+
+				expect(
+					syncCall[3],
+				).toEqual(
 					flashcards,
 				);
 			},
 		);
+
 
 		it(
 			"writes changed Markdown back to the vault",
@@ -648,6 +1024,7 @@ describe(
 						updated: 0,
 						unchanged: 0,
 						missing: 0,
+
 						updatedMarkdown,
 					});
 
@@ -679,8 +1056,9 @@ describe(
 			},
 		);
 
+
 		it(
-			"does not rewrite the file when Markdown did not change",
+			"does not rewrite unchanged Markdown",
 			async () => {
 
 				const plugin =
@@ -698,7 +1076,8 @@ describe(
 
 				expect(
 					app.vault.modify,
-				).not.toHaveBeenCalled();
+				).not
+					.toHaveBeenCalled();
 
 				expect(
 					mocks.notice,
@@ -708,8 +1087,9 @@ describe(
 			},
 		);
 
+
 		it(
-			"includes missing notes in the sync result notice",
+			"includes missing notes in the result notice",
 			async () => {
 
 				mocks.syncFlashcards
@@ -718,6 +1098,7 @@ describe(
 						updated: 2,
 						unchanged: 3,
 						missing: 4,
+
 						updatedMarkdown:
 						markdown,
 					});
@@ -742,6 +1123,7 @@ describe(
 				);
 			},
 		);
+
 
 		it(
 			"handles sync errors",
@@ -768,21 +1150,13 @@ describe(
 				);
 
 				expect(
-					console.error,
-				).toHaveBeenCalledWith(
-					"Could not sync flashcards:",
-					expect.any(
-						Error,
-					),
-				);
-
-				expect(
 					mocks.notice,
 				).toHaveBeenCalledWith(
 					"Could not sync flashcards with Anki.",
 				);
 			},
 		);
+
 
 		it(
 			"creates a new Anki deck",
@@ -808,6 +1182,7 @@ describe(
 				);
 			},
 		);
+
 
 		it(
 			"shows a notice and rethrows when deck creation fails",
@@ -842,17 +1217,9 @@ describe(
 				).toHaveBeenCalledWith(
 					"Could not create the Anki deck.",
 				);
-
-				expect(
-					console.error,
-				).toHaveBeenCalledWith(
-					"Could not create Anki deck:",
-					expect.any(
-						Error,
-					),
-				);
 			},
 		);
+
 
 		it(
 			"merges loaded settings with defaults",
@@ -880,6 +1247,7 @@ describe(
 			},
 		);
 
+
 		it(
 			"uses default settings when loaded data is invalid",
 			async () => {
@@ -904,6 +1272,7 @@ describe(
 				});
 			},
 		);
+
 
 		it(
 			"saves the current settings",

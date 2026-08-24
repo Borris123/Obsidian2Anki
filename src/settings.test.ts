@@ -6,127 +6,249 @@ import {
 	vi,
 } from "vitest";
 
+
+type OnChangeCallback =
+	(value: string) => Promise<void>;
+
+
+interface TextControl {
+
+	setPlaceholder(
+		value: string,
+	): TextControl;
+
+	setValue(
+		value: string,
+	): TextControl;
+
+	onChange(
+		callback: OnChangeCallback,
+	): TextControl;
+}
+
+
 const mocks = vi.hoisted(() => ({
-	settingConstructor: vi.fn(),
 
-	setName: vi.fn(),
-	setDesc: vi.fn(),
-	addText: vi.fn(),
+	settingConstructor:
+		vi.fn<
+			(containerEl: unknown) => void
+		>(),
 
-	setPlaceholder: vi.fn(),
-	setValue: vi.fn(),
-	onChange: vi.fn(),
+	containerEmpty:
+		vi.fn<
+			() => void
+		>(),
+
+	setName:
+		vi.fn<
+			(name: string) => void
+		>(),
+
+	setDesc:
+		vi.fn<
+			(description: string) => void
+		>(),
+
+	addText:
+		vi.fn<
+			(
+				callback:
+				(text: TextControl) =>
+					unknown,
+			) => void
+		>(),
+
+	setPlaceholder:
+		vi.fn<
+			(value: string) =>
+				TextControl
+		>(),
+
+	setValue:
+		vi.fn<
+			(value: string) =>
+				TextControl
+		>(),
+
+	onChange:
+		vi.fn<
+			(
+				callback:
+				OnChangeCallback,
+			) => TextControl
+		>(),
 }));
 
-vi.mock("obsidian", () => {
 
-	class PluginSettingTab {
+vi.mock(
+	"obsidian",
+	() => {
 
-		containerEl: {
-			empty: ReturnType<typeof vi.fn>;
+		class PluginSettingTab {
+
+			containerEl: {
+				empty: () => void;
+			};
+
+			constructor() {
+
+				this.containerEl = {
+					empty: () => {
+						mocks.containerEmpty();
+					},
+				};
+			}
+		}
+
+
+		class Setting {
+
+			constructor(
+				containerEl: unknown,
+			) {
+				mocks.settingConstructor(
+					containerEl,
+				);
+			}
+
+
+			setName(
+				name: string,
+			): this {
+
+				mocks.setName(
+					name,
+				);
+
+				return this;
+			}
+
+
+			setDesc(
+				description: string,
+			): this {
+
+				mocks.setDesc(
+					description,
+				);
+
+				return this;
+			}
+
+
+			addText(
+				callback:
+				(text: TextControl) =>
+					unknown,
+			): this {
+
+				mocks.addText(
+					callback,
+				);
+
+				const text:
+					TextControl = {
+
+					setPlaceholder(
+						value: string,
+					): TextControl {
+
+						return mocks
+							.setPlaceholder(
+								value,
+							);
+					},
+
+					setValue(
+						value: string,
+					): TextControl {
+
+						return mocks
+							.setValue(
+								value,
+							);
+					},
+
+					onChange(
+						onChangeCallback:
+						OnChangeCallback,
+					): TextControl {
+
+						return mocks.onChange(
+							onChangeCallback,
+						);
+					},
+				};
+
+				mocks.setPlaceholder
+					.mockReturnValue(
+						text,
+					);
+
+				mocks.setValue
+					.mockReturnValue(
+						text,
+					);
+
+				mocks.onChange
+					.mockReturnValue(
+						text,
+					);
+
+				callback(
+					text,
+				);
+
+				return this;
+			}
+		}
+
+
+		return {
+			PluginSettingTab,
+			Setting,
 		};
+	},
+);
 
-		constructor() {
-			this.containerEl = {
-				empty: vi.fn(),
-			};
-		}
-	}
-
-	class Setting {
-
-		constructor(
-			containerEl: unknown,
-		) {
-			mocks.settingConstructor(
-				containerEl,
-			);
-		}
-
-		setName(
-			name: string,
-		): this {
-
-			mocks.setName(
-				name,
-			);
-
-			return this;
-		}
-
-		setDesc(
-			description: string,
-		): this {
-
-			mocks.setDesc(
-				description,
-			);
-
-			return this;
-		}
-
-		addText(
-			callback:
-			(text: {
-				setPlaceholder:
-					(value: string) =>
-						unknown;
-
-				setValue:
-					(value: string) =>
-						unknown;
-
-				onChange:
-					(
-						callback:
-						(value: string) =>
-							Promise<void>,
-					) => unknown;
-			}) => unknown,
-		): this {
-
-			mocks.addText(
-				callback,
-			);
-
-			const text = {
-				setPlaceholder:
-				mocks.setPlaceholder,
-
-				setValue:
-				mocks.setValue,
-
-				onChange:
-				mocks.onChange,
-			};
-
-			mocks.setPlaceholder
-				.mockReturnValue(text);
-
-			mocks.setValue
-				.mockReturnValue(text);
-
-			mocks.onChange
-				.mockReturnValue(text);
-
-			callback(
-				text,
-			);
-
-			return this;
-		}
-	}
-
-	return {
-		PluginSettingTab,
-		Setting,
-	};
-});
 
 import {
 	AnkiExporterSettingTab,
 	DEFAULT_SETTINGS,
 } from "./settings";
+
+
+interface TestPlugin {
+
+	settings: {
+		ankiConnectUrl: string;
+	};
+
+	saveSettings:
+		ReturnType<
+			typeof vi.fn<
+				() => Promise<void>
+			>
+		>;
+}
+
+
+function getOnChangeCallback():
+	OnChangeCallback {
+
+	const onChangeCall =
+		mocks.onChange
+			.mock.calls[0];
+
+	if (!onChangeCall) {
+		throw new Error(
+			"onChange callback was not registered.",
+		);
+	}
+
+	return onChangeCall[0];
+}
+
 
 describe(
 	"DEFAULT_SETTINGS",
@@ -147,18 +269,14 @@ describe(
 	},
 );
 
+
 describe(
 	"AnkiExporterSettingTab",
 	() => {
 
-		let plugin: {
-			settings: {
-				ankiConnectUrl: string;
-			};
+		let plugin:
+			TestPlugin;
 
-			saveSettings:
-				ReturnType<typeof vi.fn>;
-		};
 
 		beforeEach(() => {
 
@@ -171,12 +289,15 @@ describe(
 				},
 
 				saveSettings:
-					vi.fn()
+					vi.fn<
+						() => Promise<void>
+					>()
 						.mockResolvedValue(
 							undefined,
 						),
 			};
 		});
+
 
 		it(
 			"clears the settings container before rendering",
@@ -191,12 +312,11 @@ describe(
 				settingTab.display();
 
 				expect(
-					settingTab
-						.containerEl
-						.empty,
+					mocks.containerEmpty,
 				).toHaveBeenCalledOnce();
 			},
 		);
+
 
 		it(
 			"creates the AnkiConnect URL setting",
@@ -224,6 +344,7 @@ describe(
 			},
 		);
 
+
 		it(
 			"uses the current AnkiConnect URL as input value",
 			() => {
@@ -250,6 +371,7 @@ describe(
 			},
 		);
 
+
 		it(
 			"trims a changed AnkiConnect URL",
 			async () => {
@@ -263,11 +385,7 @@ describe(
 				settingTab.display();
 
 				const onChangeCallback =
-					mocks.onChange
-						.mock.calls[0]![0] as
-						(
-							value: string,
-						) => Promise<void>;
+					getOnChangeCallback();
 
 				await onChangeCallback(
 					"  http://localhost:8765  ",
@@ -283,6 +401,7 @@ describe(
 			},
 		);
 
+
 		it(
 			"saves settings after the URL changes",
 			async () => {
@@ -296,11 +415,7 @@ describe(
 				settingTab.display();
 
 				const onChangeCallback =
-					mocks.onChange
-						.mock.calls[0]![0] as
-						(
-							value: string,
-						) => Promise<void>;
+					getOnChangeCallback();
 
 				await onChangeCallback(
 					"http://localhost:8765",
@@ -312,12 +427,15 @@ describe(
 			},
 		);
 
+
 		it(
 			"stores the trimmed URL before saving settings",
 			async () => {
 
 				plugin.saveSettings =
-					vi.fn(
+					vi.fn<
+						() => Promise<void>
+					>(
 						async () => {
 
 							expect(
@@ -339,11 +457,7 @@ describe(
 				settingTab.display();
 
 				const onChangeCallback =
-					mocks.onChange
-						.mock.calls[0]![0] as
-						(
-							value: string,
-						) => Promise<void>;
+					getOnChangeCallback();
 
 				await onChangeCallback(
 					"  http://localhost:8765  ",

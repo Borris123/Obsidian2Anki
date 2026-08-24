@@ -8,7 +8,10 @@ export default defineConfig({
 			name:
 				"resolve-obsidian-for-tests",
 
-			resolveId(id: any) {
+			resolveId(
+				id: string,
+			): string | null {
+
 				if (id === "obsidian") {
 					return id;
 				}

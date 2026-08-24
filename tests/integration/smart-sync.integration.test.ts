@@ -9,32 +9,52 @@ import {
 	parseFlashcards,
 } from "../../src/flashcards/flashcard-parser";
 
-import {
+import type {
 	AnkiNote,
 } from "../../src/anki/anki-note";
 
 import {
-	FlashcardSyncClient,
 	syncFlashcards,
 } from "../../src/sync/sync-flashcards";
 
-function createMockClient():
-	FlashcardSyncClient {
+import type {
+	FlashcardSyncClient,
+} from "../../src/sync/sync-flashcards";
 
-	return {
+
+function createMockClient() {
+
+	const client = {
 		getNotes:
-			vi.fn()
-				.mockResolvedValue([]),
+			vi.fn<
+				FlashcardSyncClient["getNotes"]
+			>(),
 
 		updateFlashcard:
-			vi.fn()
-				.mockResolvedValue(undefined),
+			vi.fn<
+				FlashcardSyncClient["updateFlashcard"]
+			>(),
 
 		addFlashcards:
-			vi.fn()
-				.mockResolvedValue([]),
-	};
+			vi.fn<
+				FlashcardSyncClient["addFlashcards"]
+			>(),
+	} satisfies FlashcardSyncClient;
+
+	client.getNotes
+		.mockResolvedValue([]);
+
+	client.updateFlashcard
+		.mockResolvedValue(
+			undefined,
+		);
+
+	client.addFlashcards
+		.mockResolvedValue([]);
+
+	return client;
 }
+
 
 function createAnkiNote(
 	noteId: number,
@@ -63,6 +83,7 @@ function createAnkiNote(
 	};
 }
 
+
 describe("smart sync integration", () => {
 
 	it("creates new flashcards and writes their Anki IDs to Markdown", async () => {
@@ -80,12 +101,11 @@ Stack :: LIFO`;
 		const client =
 			createMockClient();
 
-		vi.mocked(
-			client.addFlashcards,
-		).mockResolvedValue([
-			100,
-			200,
-		]);
+		client.addFlashcards
+			.mockResolvedValue([
+				100,
+				200,
+			]);
 
 		const result =
 			await syncFlashcards(
@@ -129,6 +149,7 @@ Stack :: LIFO`,
 		).not.toHaveBeenCalled();
 	});
 
+
 	it("skips unchanged existing flashcards", async () => {
 
 		const markdown =
@@ -143,15 +164,14 @@ Array :: Collection of elements`;
 		const client =
 			createMockClient();
 
-		vi.mocked(
-			client.getNotes,
-		).mockResolvedValue([
-			createAnkiNote(
-				100,
-				"Array",
-				"Collection of elements",
-			),
-		]);
+		client.getNotes
+			.mockResolvedValue([
+				createAnkiNote(
+					100,
+					"Array",
+					"Collection of elements",
+				),
+			]);
 
 		const result =
 			await syncFlashcards(
@@ -186,6 +206,7 @@ Array :: Collection of elements`;
 		).not.toHaveBeenCalled();
 	});
 
+
 	it("updates an existing flashcard when the back changed", async () => {
 
 		const markdown =
@@ -200,18 +221,14 @@ Array :: Contiguous collection`;
 		const client =
 			createMockClient();
 
-		/*
-		 * This represents the current state in Anki.
-		 */
-		vi.mocked(
-			client.getNotes,
-		).mockResolvedValue([
-			createAnkiNote(
-				100,
-				"Array",
-				"Collection of elements",
-			),
-		]);
+		client.getNotes
+			.mockResolvedValue([
+				createAnkiNote(
+					100,
+					"Array",
+					"Collection of elements",
+				),
+			]);
 
 		const result =
 			await syncFlashcards(
@@ -235,9 +252,14 @@ Array :: Contiguous collection`;
 		).toHaveBeenCalledWith(
 			100,
 			{
-				front: "Array",
-				back: "Contiguous collection",
-				ankiNoteId: 100,
+				front:
+					"Array",
+
+				back:
+					"Contiguous collection",
+
+				ankiNoteId:
+					100,
 			},
 		);
 
@@ -245,6 +267,7 @@ Array :: Contiguous collection`;
 			result.updatedMarkdown,
 		).toBe(markdown);
 	});
+
 
 	it("handles new, changed and unchanged flashcards in one sync", async () => {
 
@@ -265,27 +288,25 @@ Queue :: FIFO`;
 		const client =
 			createMockClient();
 
-		vi.mocked(
-			client.getNotes,
-		).mockResolvedValue([
-			createAnkiNote(
-				100,
-				"Array",
-				"Old collection",
-			),
+		client.getNotes
+			.mockResolvedValue([
+				createAnkiNote(
+					100,
+					"Array",
+					"Old collection",
+				),
 
-			createAnkiNote(
-				200,
-				"Stack",
-				"LIFO",
-			),
-		]);
+				createAnkiNote(
+					200,
+					"Stack",
+					"LIFO",
+				),
+			]);
 
-		vi.mocked(
-			client.addFlashcards,
-		).mockResolvedValue([
-			300,
-		]);
+		client.addFlashcards
+			.mockResolvedValue([
+				300,
+			]);
 
 		const result =
 			await syncFlashcards(
@@ -312,8 +333,11 @@ Queue :: FIFO`;
 		).toHaveBeenCalledWith(
 			100,
 			expect.objectContaining({
-				front: "Array",
-				back: "Updated collection",
+				front:
+					"Array",
+
+				back:
+					"Updated collection",
 			}),
 		);
 
