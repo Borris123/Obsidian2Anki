@@ -24,6 +24,7 @@ import {
 import {
 	AnkiExportModal,
 } from "./ui/anki-export-modal";
+import {hasFlashcardChanged} from "./flashcards/flashcard-sync";
 
 export default class AnkiExporterPlugin
 	extends Plugin {
@@ -146,46 +147,122 @@ export default class AnkiExporterPlugin
 							undefined,
 					);
 
-				if (newFlashcards.length === 0) {
-					new Notice(
-						"All flashcards are already linked to Anki.",
+				const existingFlashcards =
+					flashcards.filter(
+						flashcard =>
+							flashcard.ankiNoteId !==
+							undefined,
 					);
 
-					return;
-				}
+				const existingNoteIds =
+					existingFlashcards.map(
+						flashcard =>
+							flashcard.ankiNoteId!,
+					);
 
-				const noteIds =
-					await ankiClient
-						.addFlashcards(
-							deckName,
-							newFlashcards,
+				const ankiNotes =
+					existingNoteIds.length > 0
+						? await ankiClient.getNotes(
+							existingNoteIds,
+						)
+						: [];
+
+				const ankiNotesById =
+					new Map(
+						ankiNotes.map(
+							note => [
+								note.noteId,
+								note,
+							],
+						),
+					);
+
+				let updatedCount = 0;
+				let unchangedCount = 0;
+				let missingCount = 0;
+
+				for (
+					const flashcard
+					of existingFlashcards
+					) {
+
+					const noteId =
+						flashcard.ankiNoteId!;
+
+					const ankiNote =
+						ankiNotesById.get(
+							noteId,
 						);
 
-				const updatedMarkdown =
-					addAnkiNoteIdsToMarkdown(
-						markdown,
-						noteIds,
+					if (!ankiNote) {
+						missingCount++;
+
+						continue;
+					}
+
+					if (
+						!hasFlashcardChanged(
+							flashcard,
+							ankiNote,
+						)
+					) {
+						unchangedCount++;
+
+						continue;
+					}
+
+					await ankiClient
+						.updateFlashcard(
+							noteId,
+							flashcard,
+						);
+
+					updatedCount++;
+				}
+
+				let createdCount = 0;
+
+				if (newFlashcards.length > 0) {
+
+					const noteIds =
+						await ankiClient
+							.addFlashcards(
+								deckName,
+								newFlashcards,
+							);
+
+					createdCount =
+						noteIds.filter(
+							id => id !== null,
+						).length;
+
+					const updatedMarkdown =
+						addAnkiNoteIdsToMarkdown(
+							markdown,
+							noteIds,
+						);
+
+					await this.app.vault.modify(
+						file,
+						updatedMarkdown,
 					);
+				}
 
-				await this.app.vault.modify(
-					file,
-					updatedMarkdown,
-				);
+				let message =
+					`Sync complete: ` +
+					`${createdCount} created, ` +
+					`${updatedCount} updated, ` +
+					`${unchangedCount} unchanged`;
 
-				const successfulImports =
-					noteIds.filter(
-						id => id !== null,
-					).length;
+				if (missingCount > 0) {
+					message +=
+						`, ${missingCount} missing`;
+				}
 
-				const alreadyLinked =
-					flashcards.length -
-					newFlashcards.length;
+				message += ".";
 
 				new Notice(
-					`Created ${successfulImports}/` +
-					`${newFlashcards.length} ` +
-					`new flashcard(s). ` +
-					`${alreadyLinked} already linked.`,
+					message,
 				);
 			},
 
