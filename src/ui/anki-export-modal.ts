@@ -2,35 +2,53 @@ import {
 	App,
 	Modal,
 	Notice,
+	Setting,
 } from "obsidian";
 
-export class AnkiExportModal extends Modal {
+import type {
+	DuplicateHandling,
+} from "../anki/duplicate-handling";
+
+export class AnkiExportModal
+	extends Modal {
 
 	private availableDecks: string[];
 
 	private selectedDeck: string;
 
-	private searchInput!: HTMLInputElement;
+	private duplicateHandling:
+		DuplicateHandling = "skip";
 
-	private deckSelect!: HTMLSelectElement;
+	private searchInput!:
+		HTMLInputElement;
 
-	private createDeckInput!: HTMLInputElement;
+	private deckSelect!:
+		HTMLSelectElement;
 
-	private createDeckButton!: HTMLButtonElement;
+	private createDeckInput!:
+		HTMLInputElement;
 
-	private exportButton!: HTMLButtonElement;
+	private createDeckButton!:
+		HTMLButtonElement;
+
+	private exportButton!:
+		HTMLButtonElement;
 
 	constructor(
 		app: App,
 
-		private readonly noteName: string,
+		private readonly noteName:
+		string,
 
 		decks: string[],
 
-		private readonly flashcardCount: number,
+		private readonly flashcardCount:
+		number,
 
 		private readonly onExport: (
 			deckName: string,
+			duplicateHandling:
+			DuplicateHandling,
 		) => Promise<void>,
 
 		private readonly onCreateDeck: (
@@ -42,8 +60,9 @@ export class AnkiExportModal extends Modal {
 
 		this.availableDecks = [
 			...decks,
-		].sort((a, b) =>
-			a.localeCompare(b),
+		].sort(
+			(a, b) =>
+				a.localeCompare(b),
 		);
 
 		this.selectedDeck =
@@ -51,11 +70,15 @@ export class AnkiExportModal extends Modal {
 				"Default",
 			)
 				? "Default"
-				: this.availableDecks[0] ?? "";
+				: this.availableDecks[0]
+				?? "";
 	}
 
 	onOpen(): void {
-		const { contentEl } = this;
+
+		const {
+			contentEl,
+		} = this;
 
 		contentEl.addClass(
 			"anki-export-modal",
@@ -65,73 +88,110 @@ export class AnkiExportModal extends Modal {
 			"Export to Anki",
 		);
 
-		contentEl.createEl("p", {
-			text:
-				`${this.noteName}: ` +
-				`${this.flashcardCount} ` +
-				`flashcard(s) found.`,
-			cls: "anki-export-summary",
-		});
+		contentEl.createEl(
+			"p",
+			{
+				text:
+					`${this.noteName}: ` +
+					`${this.flashcardCount} ` +
+					"flashcard(s) found.",
+
+				cls:
+					"anki-export-summary",
+			},
+		);
 
 		this.renderSearch();
+
 		this.renderDeckSelection();
+
 		this.renderCreateDeck();
+
+		this.renderDuplicateHandling();
+
 		this.renderActions();
 
 		this.renderDeckOptions();
 	}
 
-	private renderSearch(): void {
-		const container =
-			this.contentEl.createDiv({
-				cls: "anki-export-field",
-			});
+	private renderSearch():
+		void {
 
-		container.createEl("label", {
-			text: "Search deck",
-		});
+		const container =
+			this.contentEl
+				.createDiv({
+					cls:
+						"anki-export-field",
+				});
+
+		container.createEl(
+			"label",
+			{
+				text:
+					"Search deck",
+			},
+		);
 
 		this.searchInput =
-			container.createEl("input");
+			container.createEl(
+				"input",
+			);
 
-		this.searchInput.type = "search";
+		this.searchInput.type =
+			"search";
 
 		this.searchInput.placeholder =
 			"Search Anki decks...";
 
-		this.searchInput.addEventListener(
-			"input",
-			() => {
-				this.renderDeckOptions();
-			},
-		);
+		this.searchInput
+			.addEventListener(
+				"input",
+				() => {
+					this.renderDeckOptions();
+				},
+			);
 	}
 
-	private renderDeckSelection(): void {
-		const container =
-			this.contentEl.createDiv({
-				cls: "anki-export-field",
-			});
+	private renderDeckSelection():
+		void {
 
-		container.createEl("label", {
-			text: "Anki deck",
-		});
+		const container =
+			this.contentEl
+				.createDiv({
+					cls:
+						"anki-export-field",
+				});
+
+		container.createEl(
+			"label",
+			{
+				text:
+					"Anki deck",
+			},
+		);
 
 		this.deckSelect =
-			container.createEl("select");
+			container.createEl(
+				"select",
+			);
 
-		this.deckSelect.addEventListener(
-			"change",
-			() => {
-				this.selectedDeck =
-					this.deckSelect.value;
+		this.deckSelect
+			.addEventListener(
+				"change",
+				() => {
 
-				this.updateExportButton();
-			},
-		);
+					this.selectedDeck =
+						this.deckSelect
+							.value;
+
+					this.updateExportButton();
+				},
+			);
 	}
 
-	private renderDeckOptions(): void {
+	private renderDeckOptions():
+		void {
+
 		const query =
 			this.searchInput
 				?.value
@@ -140,18 +200,24 @@ export class AnkiExportModal extends Modal {
 			?? "";
 
 		const matchingDecks =
-			this.availableDecks.filter(
-				deck =>
-					deck
-						.toLowerCase()
-						.includes(query),
-			);
+			this.availableDecks
+				.filter(
+					deck =>
+						deck
+							.toLowerCase()
+							.includes(
+								query,
+							),
+				);
 
-		this.deckSelect.replaceChildren();
+		this.deckSelect
+			.replaceChildren();
 
 		if (
-			matchingDecks.length === 0
+			matchingDecks.length ===
+			0
 		) {
+
 			const option =
 				new Option(
 					"No matching decks",
@@ -160,11 +226,15 @@ export class AnkiExportModal extends Modal {
 					true,
 				);
 
-			option.disabled = true;
+			option.disabled =
+				true;
 
-			this.deckSelect.add(option);
+			this.deckSelect.add(
+				option,
+			);
 
-			this.selectedDeck = "";
+			this.selectedDeck =
+				"";
 
 			this.updateExportButton();
 
@@ -176,21 +246,25 @@ export class AnkiExportModal extends Modal {
 				this.selectedDeck,
 			)
 		) {
-			// @ts-ignore
+
 			this.selectedDeck =
-				matchingDecks[0];
+				matchingDecks[0]!;
 		}
 
 		for (
-			const deck of matchingDecks
+			const deck
+			of matchingDecks
 			) {
+
 			const option =
 				new Option(
 					deck,
 					deck,
 				);
 
-			this.deckSelect.add(option);
+			this.deckSelect.add(
+				option,
+			);
 		}
 
 		this.deckSelect.value =
@@ -199,42 +273,103 @@ export class AnkiExportModal extends Modal {
 		this.updateExportButton();
 	}
 
-	private renderCreateDeck(): void {
-		const container =
-			this.contentEl.createDiv({
-				cls: "anki-export-field",
-			});
+	private renderCreateDeck():
+		void {
 
-		container.createEl("label", {
-			text: "Create new deck",
-		});
+		const container =
+			this.contentEl
+				.createDiv({
+					cls:
+						"anki-export-field",
+				});
+
+		container.createEl(
+			"label",
+			{
+				text:
+					"Create new deck",
+			},
+		);
 
 		const row =
 			container.createDiv({
-				cls: "anki-export-create-row",
+				cls:
+					"anki-export-create-row",
 			});
 
 		this.createDeckInput =
-			row.createEl("input");
+			row.createEl(
+				"input",
+			);
 
 		this.createDeckInput.type =
 			"text";
 
-		this.createDeckInput.placeholder =
+		this.createDeckInput
+			.placeholder =
 			"e.g. Informatik::Algorithms";
 
 		this.createDeckButton =
-			row.createEl("button", {
-				text: "Create & select",
-			});
+			row.createEl(
+				"button",
+				{
+					text:
+						"Create & select",
+				},
+			);
 
 		this.createDeckButton.type =
 			"button";
 
-		this.createDeckButton.addEventListener(
-			"click",
-			() => {
-				void this.handleCreateDeck();
+		this.createDeckButton
+			.addEventListener(
+				"click",
+				() => {
+					void this
+						.handleCreateDeck();
+				},
+			);
+	}
+
+	private renderDuplicateHandling():
+		void {
+
+		const setting =
+			new Setting(
+				this.contentEl,
+			);
+
+		setting
+			.setName(
+				"Duplicates",
+			)
+			.setDesc(
+				"Skip duplicates",
+			);
+
+		setting.addToggle(
+			toggle => {
+
+				toggle.setValue(
+					this.duplicateHandling ===
+					"add",
+				);
+
+				toggle.onChange(
+					value => {
+
+						this.duplicateHandling =
+							value
+								? "add"
+								: "skip";
+
+						setting.setDesc(
+							value
+								? "Add duplicates"
+								: "Skip duplicates",
+						);
+					},
+				);
 			},
 		);
 	}
@@ -248,6 +383,7 @@ export class AnkiExportModal extends Modal {
 				.trim();
 
 		if (!deckName) {
+
 			new Notice(
 				"Enter a deck name.",
 			);
@@ -256,16 +392,20 @@ export class AnkiExportModal extends Modal {
 		}
 
 		if (
-			this.availableDecks.includes(
-				deckName,
-			)
+			this.availableDecks
+				.includes(
+					deckName,
+				)
 		) {
+
 			this.selectedDeck =
 				deckName;
 
-			this.searchInput.value = "";
+			this.searchInput.value =
+				"";
 
-			this.createDeckInput.value =
+			this.createDeckInput
+				.value =
 				"";
 
 			this.renderDeckOptions();
@@ -277,13 +417,16 @@ export class AnkiExportModal extends Modal {
 			return;
 		}
 
-		this.createDeckButton.disabled =
+		this.createDeckButton
+			.disabled =
 			true;
 
-		this.createDeckButton.textContent =
+		this.createDeckButton
+			.textContent =
 			"Creating...";
 
 		try {
+
 			await this.onCreateDeck(
 				deckName,
 			);
@@ -300,9 +443,11 @@ export class AnkiExportModal extends Modal {
 			this.selectedDeck =
 				deckName;
 
-			this.searchInput.value = "";
+			this.searchInput.value =
+				"";
 
-			this.createDeckInput.value =
+			this.createDeckInput
+				.value =
 				"";
 
 			this.renderDeckOptions();
@@ -312,6 +457,7 @@ export class AnkiExportModal extends Modal {
 			);
 
 		} catch (error) {
+
 			console.error(
 				"Could not create Anki deck:",
 				error,
@@ -322,37 +468,46 @@ export class AnkiExportModal extends Modal {
 			);
 
 		} finally {
-			this.createDeckButton.disabled =
+
+			this.createDeckButton
+				.disabled =
 				false;
 
-			this.createDeckButton.textContent =
+			this.createDeckButton
+				.textContent =
 				"Create & select";
 		}
 	}
 
-	private renderActions(): void {
+	private renderActions():
+		void {
+
 		const actions =
-			this.contentEl.createDiv({
-				cls: "anki-export-actions",
-			});
+			this.contentEl
+				.createDiv({
+					cls:
+						"anki-export-actions",
+				});
 
 		const cancelButton =
 			actions.createEl(
 				"button",
 				{
-					text: "Cancel",
+					text:
+						"Cancel",
 				},
 			);
 
 		cancelButton.type =
 			"button";
 
-		cancelButton.addEventListener(
-			"click",
-			() => {
-				this.close();
-			},
-		);
+		cancelButton
+			.addEventListener(
+				"click",
+				() => {
+					this.close();
+				},
+			);
 
 		this.exportButton =
 			actions.createEl(
@@ -362,19 +517,23 @@ export class AnkiExportModal extends Modal {
 						`Export ` +
 						`${this.flashcardCount} ` +
 						`card(s)`,
-					cls: "mod-cta",
+
+					cls:
+						"mod-cta",
 				},
 			);
 
 		this.exportButton.type =
 			"button";
 
-		this.exportButton.addEventListener(
-			"click",
-			() => {
-				void this.handleExport();
-			},
-		);
+		this.exportButton
+			.addEventListener(
+				"click",
+				() => {
+					void this
+						.handleExport();
+				},
+			);
 
 		this.updateExportButton();
 	}
@@ -382,24 +541,31 @@ export class AnkiExportModal extends Modal {
 	private async handleExport():
 		Promise<void> {
 
-		if (!this.selectedDeck) {
+		if (
+			!this.selectedDeck
+		) {
 			return;
 		}
 
-		this.exportButton.disabled =
+		this.exportButton
+			.disabled =
 			true;
 
-		this.exportButton.textContent =
+		this.exportButton
+			.textContent =
 			"Exporting...";
 
 		try {
+
 			await this.onExport(
 				this.selectedDeck,
+				this.duplicateHandling,
 			);
 
 			this.close();
 
 		} catch (error) {
+
 			console.error(
 				"Anki export failed:",
 				error,
@@ -413,15 +579,20 @@ export class AnkiExportModal extends Modal {
 		}
 	}
 
-	private updateExportButton(): void {
-		if (!this.exportButton) {
+	private updateExportButton():
+		void {
+
+		if (
+			!this.exportButton
+		) {
 			return;
 		}
 
 		this.exportButton.disabled =
 			!this.selectedDeck;
 
-		this.exportButton.textContent =
+		this.exportButton
+			.textContent =
 			`Export ${this.flashcardCount} card(s)`;
 	}
 

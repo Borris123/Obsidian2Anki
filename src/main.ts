@@ -28,11 +28,14 @@ import {
 export default class AnkiExporterPlugin
 	extends Plugin {
 
-	settings: AnkiExporterSettings = {
+	settings:
+		AnkiExporterSettings = {
 		...DEFAULT_SETTINGS,
 	};
 
-	async onload(): Promise<void> {
+	async onload():
+		Promise<void> {
+
 		await this.loadSettings();
 
 		this.addSettingTab(
@@ -44,9 +47,12 @@ export default class AnkiExporterPlugin
 
 		this.addRibbonIcon(
 			"layers",
+
 			"Export current note to Anki",
+
 			async () => {
-				await this.openExportModal();
+				await this
+					.openExportModal();
 			},
 		);
 
@@ -57,9 +63,11 @@ export default class AnkiExporterPlugin
 			name:
 				"Export current note to Anki",
 
-			callback: async () => {
-				await this.openExportModal();
-			},
+			callback:
+				async () => {
+					await this
+						.openExportModal();
+				},
 		});
 	}
 
@@ -71,6 +79,7 @@ export default class AnkiExporterPlugin
 				.getActiveFile();
 
 		if (!file) {
+
 			new Notice(
 				"No note is currently open.",
 			);
@@ -78,7 +87,10 @@ export default class AnkiExporterPlugin
 			return;
 		}
 
-		if (file.extension !== "md") {
+		if (
+			file.extension !== "md"
+		) {
+
 			new Notice(
 				"The current file is not a Markdown note.",
 			);
@@ -88,14 +100,19 @@ export default class AnkiExporterPlugin
 
 		const markdown =
 			await this.app.vault
-				.cachedRead(file);
+				.cachedRead(
+					file,
+				);
 
 		const flashcards =
 			parseFlashcards(
 				markdown,
 			);
 
-		if (flashcards.length === 0) {
+		if (
+			flashcards.length === 0
+		) {
+
 			new Notice(
 				"No flashcards found in the current note.",
 			);
@@ -112,11 +129,13 @@ export default class AnkiExporterPlugin
 		let decks: string[];
 
 		try {
+
 			decks =
 				await ankiClient
 					.getDeckNames();
 
 		} catch (error) {
+
 			console.error(
 				"Could not connect to Anki:",
 				error,
@@ -138,20 +157,27 @@ export default class AnkiExporterPlugin
 
 			flashcards.length,
 
-			async deckName => {
+			async (
+				deckName,
+				duplicateHandling,
+			) => {
+
 				try {
+
 					const result =
 						await syncFlashcards(
 							ankiClient,
 							deckName,
 							markdown,
 							flashcards,
+							duplicateHandling,
 						);
 
 					if (
 						result.updatedMarkdown !==
 						markdown
 					) {
+
 						await this.app.vault
 							.modify(
 								file,
@@ -168,6 +194,7 @@ export default class AnkiExporterPlugin
 					if (
 						result.missing > 0
 					) {
+
 						message +=
 							`, ${result.missing} missing`;
 					}
@@ -179,6 +206,7 @@ export default class AnkiExporterPlugin
 					);
 
 				} catch (error) {
+
 					console.error(
 						"Could not sync flashcards:",
 						error,
@@ -187,17 +215,22 @@ export default class AnkiExporterPlugin
 					new Notice(
 						"Could not sync flashcards with Anki.",
 					);
+
+					throw error;
 				}
 			},
 
 			async deckName => {
+
 				try {
+
 					await ankiClient
 						.createDeck(
 							deckName,
 						);
 
 				} catch (error) {
+
 					console.error(
 						"Could not create Anki deck:",
 						error,
@@ -217,19 +250,23 @@ export default class AnkiExporterPlugin
 	async loadSettings():
 		Promise<void> {
 
-		const loadedData: unknown =
+		const loadedData:
+			unknown =
 			await this.loadData();
 
 		if (
-			typeof loadedData === "object" &&
+			typeof loadedData ===
+			"object" &&
 			loadedData !== null
 		) {
+
 			this.settings = {
 				...DEFAULT_SETTINGS,
 				...loadedData,
 			};
 
 		} else {
+
 			this.settings = {
 				...DEFAULT_SETTINGS,
 			};

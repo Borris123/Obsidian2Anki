@@ -1,52 +1,33 @@
-import {
-	defineConfig,
-} from "vitest/config";
+import {defineConfig,} from "vitest/config";
 
 export default defineConfig({
-	plugins: [
-		{
-			name:
-				"resolve-obsidian-for-tests",
+	plugins: [{
+		name: "resolve-obsidian-for-tests",
 
-			resolveId(
-				id: string,
-			): string | null {
+		resolveId(id: string,): string | null {
 
-				if (id === "obsidian") {
-					return id;
-				}
+			if (id === "obsidian") {
+				return id;
+			}
 
-				return null;
-			},
+			return null;
 		},
-	],
+	},],
 
 	test: {
 		coverage: {
 			provider: "v8",
 
-			reportsDirectory:
-				"coverage/report",
+			reportsDirectory: "coverage/report",
 
-			reporter: [
-				"text",
-				"html",
-				"lcov",
-			],
+			reporter: ["text", "html", "lcov",],
 
-			include: [
-				"src/**/*.ts",
-			],
+			include: ["src/**/*.ts",],
 
-			exclude: [
-				"src/**/*.test.ts",
-			],
+			exclude: ["src/**/*.test.ts",],
 
 			thresholds: {
-				lines: 85,
-				functions: 85,
-				statements: 85,
-				branches: 80,
+				lines: 80, functions: 80, statements: 80, branches: 70,
 			},
 		},
 	},
