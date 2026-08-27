@@ -2,6 +2,10 @@ import {
 	AnkiNote,
 } from "../anki/anki-note";
 
+import type {
+	DuplicateHandling,
+} from "../anki/duplicate-handling";
+
 import {
 	Flashcard,
 } from "../flashcards/flashcard";
@@ -11,8 +15,13 @@ import {
 } from "../flashcards/flashcard-markdown";
 
 import {
+	parseAnkiNoteId,
+} from "../flashcards/flashcard-parser";
+
+import {
 	hasFlashcardChanged,
 } from "../flashcards/flashcard-sync";
+
 
 export interface FlashcardSyncClient {
 
@@ -28,8 +37,11 @@ export interface FlashcardSyncClient {
 	addFlashcards(
 		deckName: string,
 		flashcards: Flashcard[],
+		duplicateHandling:
+		DuplicateHandling,
 	): Promise<(number | null)[]>;
 }
+
 
 export interface SyncResult {
 	created: number;
@@ -39,11 +51,14 @@ export interface SyncResult {
 	updatedMarkdown: string;
 }
 
+
 export async function syncFlashcards(
 	ankiClient: FlashcardSyncClient,
 	deckName: string,
 	markdown: string,
 	flashcards: Flashcard[],
+	duplicateHandling:
+	DuplicateHandling,
 ): Promise<SyncResult> {
 
 	const newFlashcards =
@@ -69,7 +84,9 @@ export async function syncFlashcards(
 	const ankiNotes =
 		noteIds.length > 0
 			? await ankiClient
-				.getNotes(noteIds)
+				.getNotes(
+					noteIds,
+				)
 			: [];
 
 	const notesById =
@@ -82,9 +99,12 @@ export async function syncFlashcards(
 			),
 		);
 
+	const orphanedFlashcards:
+		Flashcard[] = [];
+
 	let updated = 0;
+
 	let unchanged = 0;
-	let missing = 0;
 
 	for (
 		const flashcard
@@ -95,10 +115,23 @@ export async function syncFlashcards(
 			flashcard.ankiNoteId!;
 
 		const ankiNote =
-			notesById.get(noteId);
+			notesById.get(
+				noteId,
+			);
 
+		/*
+		 * The Markdown contains an Anki ID,
+		 * but that note no longer exists
+		 * in Anki.
+		 *
+		 * Treat the flashcard as a card
+		 * that needs to be created again.
+		 */
 		if (!ankiNote) {
-			missing++;
+
+			orphanedFlashcards.push(
+				flashcard,
+			);
 
 			continue;
 		}
@@ -109,6 +142,7 @@ export async function syncFlashcards(
 				ankiNote,
 			)
 		) {
+
 			unchanged++;
 
 			continue;
@@ -123,30 +157,146 @@ export async function syncFlashcards(
 		updated++;
 	}
 
+	const flashcardsToCreate = [
+		...newFlashcards,
+		...orphanedFlashcards,
+	];
+
 	let created = 0;
+
+	let missing = 0;
 
 	let updatedMarkdown =
 		markdown;
 
-	if (newFlashcards.length > 0) {
+	if (
+		flashcardsToCreate.length > 0
+	) {
 
 		const createdNoteIds =
 			await ankiClient
 				.addFlashcards(
 					deckName,
-					newFlashcards,
+					flashcardsToCreate,
+					duplicateHandling,
 				);
 
 		created =
 			createdNoteIds.filter(
-				id => id !== null,
+				noteId =>
+					noteId !== null,
 			).length;
 
+		/*
+		 * addFlashcards receives:
+		 *
+		 * [
+		 *     ...newFlashcards,
+		 *     ...orphanedFlashcards,
+		 * ]
+		 *
+		 * Therefore the first IDs belong
+		 * to completely new cards.
+		 */
+		const newFlashcardNoteIds =
+			createdNoteIds.slice(
+				0,
+				newFlashcards.length,
+			);
+
+		/*
+		 * Existing helper can add IDs
+		 * to flashcards that did not
+		 * previously have one.
+		 */
 		updatedMarkdown =
 			addAnkiNoteIdsToMarkdown(
-				markdown,
-				createdNoteIds,
+				updatedMarkdown,
+				newFlashcardNoteIds,
 			);
+
+		/*
+		 * The remaining IDs correspond
+		 * to cards whose old Anki note
+		 * no longer existed.
+		 */
+		const orphanedNoteIds =
+			createdNoteIds.slice(
+				newFlashcards.length,
+			);
+
+		for (
+			let index = 0;
+			index <
+			orphanedFlashcards.length;
+			index++
+		) {
+
+			const flashcard =
+				orphanedFlashcards[
+					index
+					];
+
+			if (!flashcard) {
+				continue;
+			}
+
+			const oldNoteId =
+				flashcard.ankiNoteId;
+
+			if (
+				oldNoteId ===
+				undefined
+			) {
+				continue;
+			}
+
+			const newNoteId =
+				orphanedNoteIds[
+					index
+					];
+
+			if (
+				newNoteId === null ||
+				newNoteId === undefined
+			) {
+
+				/*
+				 * Anki did not create
+				 * the card.
+				 *
+				 * Most likely because
+				 * duplicate handling is
+				 * set to "skip".
+				 *
+				 * The old ID is invalid,
+				 * so remove it.
+				 */
+				updatedMarkdown =
+					removeAnkiNoteId(
+						updatedMarkdown,
+						oldNoteId,
+					);
+
+				missing++;
+
+				continue;
+			}
+
+			/*
+			 * The old Anki note was gone,
+			 * but a new one was created.
+			 *
+			 * Replace the stale ID with
+			 * the new ID.
+			 */
+			updatedMarkdown =
+				replaceAnkiNoteId(
+					updatedMarkdown,
+					oldNoteId,
+					newNoteId,
+				);
+		}
 	}
 
 	return {
@@ -156,4 +306,65 @@ export async function syncFlashcards(
 		missing,
 		updatedMarkdown,
 	};
+}
+
+
+function replaceAnkiNoteId(
+	markdown: string,
+	oldNoteId: number,
+	newNoteId: number,
+): string {
+
+	const lines =
+		markdown.split("\n");
+
+	const lineIndex =
+		lines.findIndex(
+			line =>
+				parseAnkiNoteId(
+					line,
+				) === oldNoteId,
+		);
+
+	if (
+		lineIndex === -1
+	) {
+		return markdown;
+	}
+
+	lines[lineIndex] =
+		`<!-- anki-note-id:${newNoteId} -->`;
+
+	return lines.join("\n");
+}
+
+
+function removeAnkiNoteId(
+	markdown: string,
+	noteId: number,
+): string {
+
+	const lines =
+		markdown.split("\n");
+
+	const lineIndex =
+		lines.findIndex(
+			line =>
+				parseAnkiNoteId(
+					line,
+				) === noteId,
+		);
+
+	if (
+		lineIndex === -1
+	) {
+		return markdown;
+	}
+
+	lines.splice(
+		lineIndex,
+		1,
+	);
+
+	return lines.join("\n");
 }

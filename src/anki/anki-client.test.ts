@@ -141,6 +141,7 @@ describe("AnkiClient", () => {
 						back: "O(n)",
 					},
 				],
+				"skip",
 			);
 
 		expect(result).toEqual([
@@ -165,6 +166,17 @@ describe("AnkiClient", () => {
 							Back: "O(log n)",
 						},
 
+						options: {
+							allowDuplicate: false,
+							duplicateScope: "deck",
+
+							duplicateScopeOptions: {
+								deckName: "Algorithms",
+								checkChildren: false,
+								checkAllModels: false,
+							},
+						},
+
 						tags: [
 							"obsidian",
 						],
@@ -176,6 +188,17 @@ describe("AnkiClient", () => {
 						fields: {
 							Front: "Linear Search",
 							Back: "O(n)",
+						},
+
+						options: {
+							allowDuplicate: false,
+							duplicateScope: "deck",
+
+							duplicateScopeOptions: {
+								deckName: "Algorithms",
+								checkChildren: false,
+								checkAllModels: false,
+							},
 						},
 
 						tags: [

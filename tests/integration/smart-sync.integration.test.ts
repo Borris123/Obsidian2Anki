@@ -86,6 +86,9 @@ function createAnkiNote(
 
 describe("smart sync integration", () => {
 
+	const deckName =
+		"Computer Science";
+
 	it("creates new flashcards and writes their Anki IDs to Markdown", async () => {
 
 		const markdown =
@@ -110,9 +113,10 @@ Stack :: LIFO`;
 		const result =
 			await syncFlashcards(
 				client,
-				"Computer Science",
+				deckName,
 				markdown,
 				flashcards,
+				"skip",
 			);
 
 		expect(result.created)
@@ -176,9 +180,10 @@ Array :: Collection of elements`;
 		const result =
 			await syncFlashcards(
 				client,
-				"Computer Science",
+				deckName,
 				markdown,
 				flashcards,
+				"skip",
 			);
 
 		expect(result.created)
@@ -233,9 +238,10 @@ Array :: Contiguous collection`;
 		const result =
 			await syncFlashcards(
 				client,
-				"Computer Science",
+				deckName,
 				markdown,
 				flashcards,
+				"skip",
 			);
 
 		expect(result.created)
@@ -311,9 +317,10 @@ Queue :: FIFO`;
 		const result =
 			await syncFlashcards(
 				client,
-				"Computer Science",
+				deckName,
 				markdown,
 				flashcards,
+				"skip",
 			);
 
 		expect(result.created)

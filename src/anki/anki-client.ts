@@ -1,8 +1,22 @@
-import { requestUrl } from "obsidian";
+import {
+	requestUrl,
+} from "obsidian";
 
-import { AnkiResponse } from "./anki-response";
-import { Flashcard } from "../flashcards/flashcard";
-import {AnkiNote} from "./anki-note";
+import {
+	AnkiResponse,
+} from "./anki-response";
+
+import {
+	Flashcard,
+} from "../flashcards/flashcard";
+
+import {
+	AnkiNote,
+} from "./anki-note";
+
+import type {
+	DuplicateHandling,
+} from "./duplicate-handling";
 
 export class AnkiClient {
 
@@ -15,28 +29,33 @@ export class AnkiClient {
 		params: Record<string, unknown> = {},
 	): Promise<T> {
 
-		const response = await requestUrl({
-			url: this.url,
-			method: "POST",
-			contentType: "application/json",
-			body: JSON.stringify({
-				action,
-				version: 6,
-				params,
-			}),
-		});
+		const response =
+			await requestUrl({
+				url: this.url,
+				method: "POST",
+				contentType: "application/json",
+				body: JSON.stringify({
+					action,
+					version: 6,
+					params,
+				}),
+			});
 
 		const data =
 			response.json as AnkiResponse<T>;
 
 		if (data.error !== null) {
-			throw new Error(data.error);
+			throw new Error(
+				data.error,
+			);
 		}
 
 		return data.result;
 	}
 
-	async getDeckNames(): Promise<string[]> {
+	async getDeckNames():
+		Promise<string[]> {
+
 		return this.invoke<string[]>(
 			"deckNames",
 		);
@@ -45,6 +64,7 @@ export class AnkiClient {
 	async createDeck(
 		deckName: string,
 	): Promise<number> {
+
 		return this.invoke<number>(
 			"createDeck",
 			{
@@ -56,23 +76,51 @@ export class AnkiClient {
 	async addFlashcards(
 		deckName: string,
 		flashcards: Flashcard[],
+		duplicateHandling:
+		DuplicateHandling,
 	): Promise<(number | null)[]> {
 
-		const notes = flashcards.map(
-			flashcard => ({
-				deckName,
-				modelName: "Basic",
+		const allowDuplicate =
+			duplicateHandling === "add";
 
-				fields: {
-					Front: flashcard.front,
-					Back: flashcard.back,
-				},
+		const notes =
+			flashcards.map(
+				flashcard => ({
+					deckName,
 
-				tags: [
-					"obsidian",
-				],
-			}),
-		);
+					modelName:
+						"Basic",
+
+					fields: {
+						Front:
+						flashcard.front,
+
+						Back:
+						flashcard.back,
+					},
+
+					options: {
+						allowDuplicate,
+
+						duplicateScope:
+							"deck",
+
+						duplicateScopeOptions: {
+							deckName,
+
+							checkChildren:
+								false,
+
+							checkAllModels:
+								false,
+						},
+					},
+
+					tags: [
+						"obsidian",
+					],
+				}),
+			);
 
 		return this.invoke<
 			(number | null)[]
@@ -96,8 +144,11 @@ export class AnkiClient {
 					id: noteId,
 
 					fields: {
-						Front: flashcard.front,
-						Back: flashcard.back,
+						Front:
+						flashcard.front,
+
+						Back:
+						flashcard.back,
 					},
 				},
 			},
@@ -108,7 +159,9 @@ export class AnkiClient {
 		noteIds: number[],
 	): Promise<AnkiNote[]> {
 
-		return this.invoke<AnkiNote[]>(
+		return this.invoke<
+			AnkiNote[]
+		>(
 			"notesInfo",
 			{
 				notes: noteIds,
