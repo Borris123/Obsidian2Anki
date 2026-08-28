@@ -7,6 +7,7 @@ import {afterEach, beforeAll, beforeEach, describe, expect, it, vi,} from "vites
 import type {App,} from "obsidian";
 import {AnkiExportModal,} from "./anki-export-modal";
 import {DuplicateHandling} from "../anki/duplicate-handling";
+import {SyncPlan} from "../sync/sync-plan";
 
 const mocks = vi.hoisted(() => ({
 	notice: vi.fn(), setTitle: vi.fn(), close: vi.fn(),
@@ -20,7 +21,7 @@ vi.mock("obsidian", () => {
 
 		constructor() {
 
-			this.contentEl = document.createElement("div",);
+			this.contentEl = document.createElement("div");
 		}
 
 		setTitle(title: string,): void {
@@ -51,41 +52,27 @@ vi.mock("obsidian", () => {
 
 
 	class Setting {
-
 		private readonly settingEl: HTMLDivElement;
-
 		private readonly nameEl: HTMLDivElement;
-
 		private readonly descEl: HTMLDivElement;
-
 		private readonly controlEl: HTMLDivElement;
 
 		constructor(containerEl: HTMLElement,) {
+			this.settingEl = document.createElement("div");
+			this.settingEl.classList.add("setting-item");
+			const infoEl = document.createElement("div");
+			infoEl.classList.add("setting-item-info");
 
-			this.settingEl = document.createElement("div",);
-
-			this.settingEl.classList.add("setting-item",);
-
-			const infoEl = document.createElement("div",);
-
-			infoEl.classList.add("setting-item-info",);
-
-			this.nameEl = document.createElement("div",);
-
-			this.nameEl.classList.add("setting-item-name",);
-
-			this.descEl = document.createElement("div",);
-
-			this.descEl.classList.add("setting-item-description",);
-
-			this.controlEl = document.createElement("div",);
-
-			this.controlEl.classList.add("setting-item-control",);
+			this.nameEl = document.createElement("div");
+			this.nameEl.classList.add("setting-item-name");
+			this.descEl = document.createElement("div");
+			this.descEl.classList.add("setting-item-description");
+			this.controlEl = document.createElement("div");
+			this.controlEl.classList.add("setting-item-control");
 
 			infoEl.append(this.nameEl, this.descEl,);
 
 			this.settingEl.append(infoEl, this.controlEl,);
-
 			containerEl.appendChild(this.settingEl,);
 		}
 
@@ -147,7 +134,6 @@ vi.mock("obsidian", () => {
 });
 
 beforeAll(() => {
-
 	Object.defineProperty(HTMLElement.prototype, "addClass", {
 		value(this: HTMLElement, className: string,) {
 			this.classList.add(className,);
@@ -203,34 +189,27 @@ beforeAll(() => {
 
 function createModal(options?: {
 	decks?: string[]; noteName?: string; flashcardCount?: number;
-
-	onExport?: (deckName: string, duplicateHandling: DuplicateHandling,) => Promise<void>;
-
-	onCreateDeck?: (deckName: string,) => Promise<void>;
+	onExport?: (deckName: string, duplicateHandling: DuplicateHandling) => Promise<void>;
+	onCreateDeck?: (deckName: string) => Promise<void>;
+	onAnalyzeFlashcards?: (deckName: string) => Promise<SyncPlan>;
 },) {
 
-	const onExport = options?.onExport ?? vi.fn()
-		.mockResolvedValue(undefined,);
-
-	const onCreateDeck = options?.onCreateDeck ?? vi.fn()
-		.mockResolvedValue(undefined,);
+	const onExport = options?.onExport ?? vi.fn().mockResolvedValue(undefined);
+	const onCreateDeck = options?.onCreateDeck ?? vi.fn().mockResolvedValue(undefined);
+	const onAnalyzeFlashcards = options?.onAnalyzeFlashcards ?? vi.fn().mockResolvedValue(undefined);
 
 	const modal = new AnkiExportModal({} as App,
-
 		options?.noteName ?? "Algorithms",
-
 		options?.decks ?? ["Default", "Algorithms",],
-
 		options?.flashcardCount ?? 3,
-
 		onExport,
-
-		onCreateDeck,);
+		onCreateDeck,
+		onAnalyzeFlashcards);
 
 	modal.onOpen();
 
 	return {
-		modal, onExport, onCreateDeck,
+		modal, onExport, onCreateDeck
 	};
 }
 
