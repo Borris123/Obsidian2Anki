@@ -1,73 +1,33 @@
-# Obsidian2Anki
+# Anki Exporter
 
-[![codecov](https://codecov.io/gh/Borris123/Obsidian2Anki/branch/main/graph/badge.svg)](https://codecov.io/gh/Borris123/Obsidian2Anki)
+Anki Exporter is an Obsidian plugin for synchronizing Markdown flashcards with Anki through AnkiConnect.
 
-Obsidian2Anki is an Obsidian plugin that exports flashcards from Markdown notes directly to Anki.
+Write flashcards directly inside your Obsidian notes:
 
-Flashcards are defined using a simple key-value syntax:
-
-```md
-Question :: Answer
+```text
+What is an array? :: A contiguous collection of elements.
 ```
 
-The plugin parses the currently opened Obsidian note, detects all flashcards, and exports them to a selected Anki deck using [AnkiConnect](https://ankiweb.net/shared/info/2055492159).
+Then analyze and synchronize them with an Anki deck without maintaining the same content manually in both applications.
 
 ## Features
 
-* Export flashcards directly from the currently opened Obsidian note
-* Simple `Question :: Answer` syntax
-* Integration with Anki through AnkiConnect
-* Select an existing Anki deck before exporting
-* Search through available Anki decks
-* Create new Anki decks directly from Obsidian
-* Export all detected flashcards at once
-* Ribbon icon for quick access
-* Command Palette integration
-* Configurable AnkiConnect URL
-* Basic error handling for unavailable Anki instances
-* Unit-tested Markdown flashcard parser
-
-## Example
-
-Given the following Obsidian note:
-
-```md
-# Arrays
-
-Array :: A contiguous collection of elements.
-
-Index :: The position of an element inside an array.
-
-Random Access :: Direct access to an element using its index.
-
-Array Access Complexity :: O(1)
-```
-
-Obsidian2Anki detects four flashcards.
-
-The resulting Anki cards will contain:
-
-```text
-Front:
-Array
-
-Back:
-A contiguous collection of elements.
-```
-
-and:
-
-```text
-Front:
-Array Access Complexity
-
-Back:
-O(1)
-```
+- Export Markdown flashcards directly to Anki
+- Simple `Question :: Answer` syntax
+- Search and select existing Anki decks
+- Create new Anki decks directly from Obsidian
+- Smart synchronization of existing flashcards
+- Update changed Anki cards instead of creating duplicates
+- Detect unchanged flashcards
+- Recreate flashcards whose Anki note was deleted
+- Configurable duplicate handling
+- Preview changes before synchronization
+- Before/after comparison for updated flashcards
+- Configurable AnkiConnect URL
 
 ## Flashcard Syntax
 
-A flashcard must use the following format:
+Flashcards use the following format:
 
 ```text
 Question :: Answer
@@ -75,229 +35,106 @@ Question :: Answer
 
 There must be exactly one space before and after `::`.
 
-### Valid
+Example:
 
-```md
-What is an array? :: A collection of elements.
+```markdown
+# Data Structures
 
-Array access complexity :: O(1)
+Array :: A contiguous collection of elements.
 
-Binary search complexity :: O(log n)
+Stack :: A LIFO data structure.
+
+Queue :: A FIFO data structure.
 ```
 
-### Ignored
+Normal Markdown content is ignored.
 
-Normal Markdown content is ignored:
+## Smart Sync
 
-```md
-# Arrays
+When a new flashcard is created in Anki, its Anki note ID is stored inside the Markdown document:
 
-This is normal text.
-
-## Complexity
+```markdown
+<!-- anki-note-id:123456789 -->
+What is an array? :: A contiguous collection of elements.
 ```
 
-C++ scope operators are also not interpreted as flashcards:
+During future synchronizations, the plugin uses this ID to determine whether the flashcard should be:
 
-```cpp
-std::vector<int> values;
-```
+- created
+- updated
+- skipped
+- left unchanged
+- recreated if the corresponding Anki note no longer exists
 
-This is possible because the plugin specifically looks for:
+This allows the Obsidian note to remain the primary source of the flashcard content.
 
-```text
- :: 
-```
+## Sync Preview
 
-instead of simply:
+Before synchronizing, Anki Exporter can analyze all flashcards in the current note.
 
-```text
-::
-```
+The preview groups flashcards into:
+
+- **Created** – new cards that will be added to Anki
+- **Updated** – existing cards whose content changed
+- **Skipped** – cards that will not be added, for example because of duplicate handling
+- **Unchanged** – cards that are already synchronized
+
+Updated flashcards include a before/after comparison so changes can be reviewed before they are applied.
 
 ## Requirements
 
-Before using the plugin, the following applications are required:
+The following applications are required:
 
-* Obsidian
-* Anki Desktop
-* AnkiConnect
+- Obsidian
+- Anki Desktop
+- AnkiConnect
 
-Anki must be running while exporting flashcards.
+Anki must be running while synchronizing flashcards.
 
-By default, AnkiConnect is expected to be available at:
+By default, AnkiConnect is expected at:
 
 ```text
 http://127.0.0.1:8765
 ```
 
-The URL can be changed in the Obsidian plugin settings.
+The URL can be changed in the plugin settings.
 
 ## Installing AnkiConnect
 
 1. Open Anki.
-2. Go to `Tools`.
-3. Open `Add-ons`.
-4. Select `Get Add-ons`.
-5. Install AnkiConnect using the add-on code:
+2. Go to **Tools → Add-ons**.
+3. Select **Get Add-ons**.
+4. Enter the AnkiConnect add-on code:
 
 ```text
 2055492159
 ```
 
-6. Restart Anki.
+5. Restart Anki.
 
 ## Usage
-
-### Export using the Ribbon
 
 1. Open Anki.
 2. Open a Markdown note in Obsidian.
 3. Add flashcards using the `Question :: Answer` syntax.
-4. Click the Obsidian2Anki icon in the left ribbon.
-5. Search for or select an Anki deck.
-6. Optionally create a new deck.
-7. Click `Export`.
-
-### Export using the Command Palette
-
-Open the Obsidian Command Palette:
-
-```text
-Ctrl + P
-```
-
-Search for:
-
-```text
-Export current note to Anki
-```
-
-The same export dialog will open.
-
-## Deck Selection
-
-The export dialog loads the available Anki decks through AnkiConnect.
-
-Users can:
-
-* select an existing deck
-* search for a deck
-* create a new deck
-* select the newly created deck immediately
-* export all detected flashcards to the selected deck
-
-Nested Anki decks are supported.
-
-For example:
-
-```text
-Computer Science
-Computer Science::Algorithms
-Computer Science::Data Structures
-University::Semester 3::Databases
-```
-
-## Project Structure
-
-```text
-src/
-├── anki/
-│   ├── anki-client.ts
-│   └── anki-response.ts
-│
-├── flashcards/
-│   ├── flashcard.ts
-│   ├── flashcard-parser.ts
-│   └── flashcard-parser.test.ts
-│
-├── ui/
-│   └── anki-export-modal.ts
-│
-├── main.ts
-└── settings.ts
-
-styles.css
-manifest.json
-package.json
-tsconfig.json
-esbuild.config.mjs
-```
-
-### Responsibilities
-
-#### `main.ts`
-
-Main plugin entry point.
-
-Responsible for:
-
-* loading plugin settings
-* registering commands
-* registering the ribbon icon
-* reading the active Obsidian note
-* coordinating parsing and exporting
-* opening the export modal
-
-#### `flashcard-parser.ts`
-
-Parses Markdown content and converts supported lines into flashcards.
-
-```text
-Markdown
-   ↓
-FlashcardParser
-   ↓
-Flashcard[]
-```
-
-#### `anki-client.ts`
-
-Contains the integration with AnkiConnect.
-
-Currently responsible for:
-
-```text
-getDeckNames()
-createDeck()
-addFlashcards()
-```
-
-#### `anki-export-modal.ts`
-
-Contains the export user interface.
-
-Responsible for:
-
-* displaying the number of detected flashcards
-* searching decks
-* selecting decks
-* creating decks
-* starting an export
-
-The modal does not directly communicate with AnkiConnect.
-
-This keeps the UI separated from the Anki integration.
+4. Open Anki Exporter using the ribbon icon or Command Palette.
+5. Select an Anki deck.
+6. Configure duplicate handling if necessary.
+7. Optionally analyze the flashcards before synchronizing.
+8. Export the flashcards to Anki.
 
 ## Architecture
 
-The basic application flow is:
+The project separates parsing, synchronization, Anki communication and UI logic.
 
 ```text
-Obsidian Markdown Note
+Obsidian Markdown
         │
         ▼
 Flashcard Parser
         │
         ▼
-Flashcard[]
-        │
-        ▼
-Export Modal
-        │
-        ├── Search Deck
-        ├── Select Deck
-        └── Create Deck
+Sync / Analysis
         │
         ▼
 Anki Client
@@ -309,38 +146,19 @@ AnkiConnect
 Anki
 ```
 
-The responsibilities are intentionally separated:
+Project structure:
 
 ```text
-UI
-↓
-Plugin orchestration
-↓
-Domain model
-↓
-Anki integration
+src/
+├── anki/         # AnkiConnect integration
+├── flashcards/   # Parsing and Markdown handling
+├── sync/         # Synchronization and change analysis
+├── ui/           # Obsidian user interface
+├── main.ts       # Plugin orchestration
+└── settings.ts   # Plugin settings
 ```
-
-This makes individual components easier to test and extend.
 
 ## Development
-
-### Prerequisites
-
-Install:
-
-* Node.js
-* npm
-* Obsidian
-* Anki
-* AnkiConnect
-
-Clone the repository:
-
-```bash
-git clone <repository-url>
-cd Obsidian2Anki
-```
 
 Install dependencies:
 
@@ -348,176 +166,89 @@ Install dependencies:
 npm install
 ```
 
-## Development Build
-
-Start esbuild in watch mode:
+Start the development build:
 
 ```bash
 npm run dev
 ```
 
-The TypeScript source code is compiled into:
-
-```text
-main.js
-```
-
-Obsidian executes `main.js`, not the TypeScript source files directly.
-
-After making changes, reload the plugin inside Obsidian.
-
-A typical development workflow is:
-
-```text
-Edit TypeScript
-      ↓
-Save
-      ↓
-esbuild
-      ↓
-main.js
-      ↓
-Reload Obsidian plugin
-      ↓
-Test
-```
-
-## Production Build
-
-Run:
-
-```bash
-npm run build
-```
-
-This performs the TypeScript checks and creates the production JavaScript bundle.
-
-## Tests
-
-Run the unit tests with:
+Run the test suite:
 
 ```bash
 npm test
 ```
 
-The Markdown parser is tested independently from Obsidian and Anki.
+Run tests with coverage:
 
-Example test cases include:
-
-* parsing valid flashcards
-* ignoring normal Markdown
-* ignoring empty questions
-* ignoring empty answers
-* ignoring C++ scope operators such as `std::vector`
-
-## Plugin Development Vault
-
-It is recommended to use a separate Obsidian vault while developing the plugin.
-
-The plugin should be available under:
-
-```text
-TestVault/
-└── .obsidian/
-    └── plugins/
-        └── Obsidian2Anki/
-            ├── main.js
-            ├── manifest.json
-            └── styles.css
+```bash
+npm run test:coverage
 ```
 
-The complete development repository can also be placed directly inside the plugin directory.
+Run ESLint:
 
-## Settings
-
-The plugin currently supports configuration of the AnkiConnect URL.
-
-Default:
-
-```text
-http://127.0.0.1:8765
+```bash
+npm run lint
 ```
 
-This can be changed under the Obsidian plugin settings.
+Create a production build:
 
-## Error Handling
-
-The plugin currently handles common problems such as:
-
-```text
-No Markdown note open
-No flashcards found
-Anki not running
-AnkiConnect unavailable
-No Anki decks available
-Deck creation failure
-Flashcard export failure
+```bash
+npm run build
 ```
 
-Errors are displayed through Obsidian notices and additional details are logged to the developer console.
+## Testing and CI
+
+The project contains unit and integration tests covering areas such as:
+
+- Markdown parsing
+- AnkiConnect requests
+- Smart synchronization
+- Duplicate handling
+- Missing Anki notes
+- Flashcard analysis
+- Export modal behavior
+- Error handling
+- Plugin orchestration
+
+GitHub Actions automatically runs:
+
+```text
+Lint
+  ↓
+Automated Tests
+  ↓
+Coverage
+  ↓
+Production Build
+```
+
+Coverage reports are uploaded to Codecov.
 
 ## Technology
 
-The project uses:
-
-* TypeScript
-* Obsidian Plugin API
-* AnkiConnect
-* Vitest
-* esbuild
-* npm
-
-## Why This Project Exists
-
-Obsidian is useful for writing structured study notes, while Anki is useful for long-term active recall.
-
-Maintaining the same information manually in both applications creates unnecessary duplication.
-
-Obsidian2Anki aims to make a workflow like this possible:
-
-```text
-Learn topic
-    ↓
-Write structured Obsidian notes
-    ↓
-Add important facts as:
-
-Question :: Answer
-
-    ↓
-Export
-    ↓
-Review in Anki
-```
-
-The Markdown notes remain the primary source of knowledge, while Anki is used for spaced repetition.
+- TypeScript
+- Obsidian Plugin API
+- AnkiConnect
+- Vitest
+- jsdom
+- esbuild
+- ESLint
+- Docker
+- GitHub Actions
+- Codecov
 
 ## Contributing
 
-Contributions, bug reports, and feature suggestions are welcome.
+Contributions, bug reports and feature suggestions are welcome.
 
-When contributing:
-
-1. Create a feature branch.
-2. Keep changes focused.
-3. Add tests where appropriate.
-4. Run the test suite.
-5. Run the production build.
-6. Open a pull request.
-
-Example:
+Before opening a pull request, run:
 
 ```bash
-git switch -c feat/duplicate-detection
-```
-
-Before creating a pull request:
-
-```bash
+npm run lint
 npm test
 npm run build
 ```
 
 ## License
 
-See the `LICENSE` file for license information.
+MIT
