@@ -530,10 +530,7 @@ describe("AnkiExporterPlugin", () => {
 
 		await getCommandCallback()();
 
-		await getExportCallback()(
-			"Computer Science",
-			"skip",
-		);
+		await getExportCallback()("Computer Science", "skip",);
 
 		const syncCall = mocks.syncFlashcards.mock.calls[0];
 
@@ -568,10 +565,7 @@ describe("AnkiExporterPlugin", () => {
 
 		await getCommandCallback()();
 
-		await getExportCallback()(
-			"Default",
-			"skip",
-		);
+		await getExportCallback()("Default", "skip",);
 
 		expect(app.vault.modify,).toHaveBeenCalledWith(file, updatedMarkdown,);
 
@@ -587,10 +581,7 @@ describe("AnkiExporterPlugin", () => {
 
 		await getCommandCallback()();
 
-		await getExportCallback()(
-			"Default",
-			"skip",
-		);
+		await getExportCallback()("Default", "skip",);
 
 		expect(app.vault.modify,).not
 			.toHaveBeenCalled();
@@ -614,10 +605,7 @@ describe("AnkiExporterPlugin", () => {
 
 		await getCommandCallback()();
 
-		await getExportCallback()(
-			"Default",
-			"skip",
-		);
+		await getExportCallback()("Default", "skip",);
 
 		expect(mocks.notice,).toHaveBeenCalledWith("Sync complete: 1 created, 2 updated, 3 unchanged, 4 missing.",);
 	},);
@@ -634,10 +622,7 @@ describe("AnkiExporterPlugin", () => {
 
 		await getCommandCallback()();
 
-		await expect(getExportCallback()(
-			"Default",
-			"skip",
-		)).rejects.toThrow("Sync failed",);
+		await expect(getExportCallback()("Default", "skip",)).rejects.toThrow("Sync failed",);
 
 		expect(mocks.notice,).toHaveBeenCalledWith("Could not sync flashcards with Anki.",);
 	},);

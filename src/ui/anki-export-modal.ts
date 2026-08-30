@@ -1,7 +1,7 @@
 import {App, Modal, Notice, Setting,} from "obsidian";
 
 import type {DuplicateHandling,} from "../anki/duplicate-handling";
-import {SyncPlan} from "../sync/sync-plan";
+import {SyncOperation, SyncPlan} from "../sync/sync-plan";
 
 export class AnkiExportModal extends Modal {
 	private readonly availableDecks: string[];
@@ -15,11 +15,7 @@ export class AnkiExportModal extends Modal {
 	private analyzeFlashcardsButton!: HTMLButtonElement;
 	private syncPlan: SyncPlan | null = null;
 
-	constructor(app: App, private readonly noteName: string, decks: string[],
-				private readonly flashcardCount: number,
-				private readonly onExport: (deckName: string, duplicateHandling: DuplicateHandling) => Promise<void>,
-				private readonly onCreateDeck: (deckName: string) => Promise<void>,
-				private readonly onAnalyzeFlashcards: (deckName: string, duplicateHandling: DuplicateHandling) => Promise<SyncPlan>) {
+	constructor(app: App, private readonly noteName: string, decks: string[], private readonly flashcardCount: number, private readonly onExport: (deckName: string, duplicateHandling: DuplicateHandling) => Promise<void>, private readonly onCreateDeck: (deckName: string) => Promise<void>, private readonly onAnalyzeFlashcards: (deckName: string, duplicateHandling: DuplicateHandling) => Promise<SyncPlan>) {
 		super(app);
 
 		this.availableDecks = [...decks,].sort((a, b) => a.localeCompare(b),);
@@ -271,46 +267,192 @@ export class AnkiExportModal extends Modal {
 		this.contentEl.empty();
 		this.setTitle("Flashcard Analysis");
 
-		const created = plan.operations.filter(operation => operation.type === "create",).length;
-		const updated = plan.operations.filter(operation => operation.type === "update",).length;
-		const skipped = plan.operations.filter(operation => operation.type === "skip",).length;
-		const unchanged = plan.operations.filter(operation => operation.type === "unchanged",).length;
-
 		this.contentEl.createEl("p", {
-			text: `${created} card(s) will be created.`,
+			text: `${plan.operations.length} flashcard(s) analyzed.`, cls: "anki-analysis-summary"
 		});
 
-		this.contentEl.createEl("p", {
-			text: `${updated} card(s) will be updated.`,
-		});
+		const created = plan.operations.filter(operation => operation.type === "create");
+		const updated = plan.operations.filter(operation => operation.type === "update");
+		const skipped = plan.operations.filter(operation => operation.type === "skip");
+		const unchanged = plan.operations.filter(operation => operation.type === "unchanged");
 
-		this.contentEl.createEl("p", {
-			text: `${skipped} card(s) will be skipped.`,
-		});
-
-		this.contentEl.createEl("p", {
-			text: `${unchanged} card(s) are unchanged.`,
-		});
+		this.renderAnalysisSection("Created", created);
+		this.renderAnalysisSection("Updated", updated);
+		this.renderAnalysisSection("Skipped", skipped);
+		this.renderAnalysisSection("Unchanged", unchanged);
 
 		this.renderAnalysisActions();
 	}
 
+	private renderAnalysisSection(title: string, operations: SyncOperation[]): void {
+		const section = this.contentEl.createDiv({
+			cls: "anki-analysis-section"
+		});
+
+		const toggleButton = section.createEl("button", {
+			text: `${title} - ${operations.length}`, cls: "anki-analysis-section-toggle"
+		});
+
+		toggleButton.type = "button";
+
+		const content = section.createDiv({
+			cls: "anki-analysis-section-content"
+		});
+
+		content.hidden = true;
+
+		if (operations.length === 0) {
+			toggleButton.disabled = true;
+			return;
+		}
+
+		for (const operation of operations) {
+			this.renderAnalysisOperation(content, operation);
+		}
+
+		toggleButton.setAttribute("aria-expanded", "false");
+
+		toggleButton.addEventListener("click", () => {
+			content.hidden = !content.hidden;
+			toggleButton.textContent = content.hidden ? `${title} (${operations.length})` : `${title} (${operations.length}) ▲`;
+			toggleButton.setAttribute("aria-expanded", String(!content.hidden));
+		});
+	}
+
+	private renderAnalysisOperation(container: HTMLElement, operation: SyncOperation): void {
+		const card = container.createDiv({
+			cls: "anki-analysis-card"
+		});
+
+		switch (operation.type) {
+			case "create":
+				this.renderCreatedOperation(card, operation);
+				break;
+
+			case "update":
+				this.renderUpdatedOperation(card, operation);
+				break;
+
+			case "skip":
+				this.renderSkippedOperation(card, operation);
+				break;
+
+			case "unchanged":
+				this.renderUnchangedOperation(card, operation);
+				break;
+		}
+	}
+
+	private renderCreatedOperation(container: HTMLElement, operation: Extract<SyncOperation, {
+		type: "create"
+	}>): void {
+		container.createDiv({
+			text: operation.flashcard.front, cls: "anki-analysis-card-front"
+		});
+
+		container.createDiv({
+			text: operation.flashcard.back, cls: "anki-analysis-card-back"
+		});
+
+		if (operation.previousNoteId !== undefined) {
+			container.createEl("small", {
+				text: `Previous Anki note ID: ${operation.previousNoteId}`, cls: "anki-analysis-card-meta"
+			});
+		}
+	}
+
+	private renderUnchangedOperation(container: HTMLElement, operation: Extract<SyncOperation, {
+		type: "unchanged"
+	}>): void {
+		container.createDiv({
+			text: operation.flashcard.front, cls: "anki-analysis-card-front"
+		});
+
+		container.createDiv({
+			text: operation.flashcard.back, cls: "anki-analysis-card-back"
+		});
+	}
+
+	private renderSkippedOperation(container: HTMLElement, operation: Extract<SyncOperation, { type: "skip" }>): void {
+		container.createDiv({
+			text: operation.flashcard.front, cls: "anki-analysis-card-front"
+		});
+
+		container.createDiv({
+			text: operation.flashcard.back, cls: "anki-analysis-card-back"
+		});
+
+		const reason = operation.reason === "duplicate" ? "Duplicate already exists in the selected deck." : operation.reason;
+
+		container.createEl("small", {
+			text: reason, cls: "anki-analysis-card-meta"
+		});
+	}
+
+	private renderUpdatedOperation(container: HTMLElement, operation: Extract<SyncOperation, {
+		type: "update"
+	}>): void {
+		container.createDiv({
+			text: operation.flashcard.front, cls: "anki-analysis-card-front"
+		});
+
+		const comparison = container.createDiv({
+			cls: "anki-analysis-comparison"
+		});
+
+		const before = comparison.createDiv({
+			cls: "anki-analysis-comparison-side"
+		});
+
+		before.createEl("strong", {
+			text: "Before"
+		});
+
+		before.createDiv({
+			text: `Front: ${operation.previousFront}`
+		});
+
+		before.createDiv({
+			text: `Back: ${operation.previousBack}`
+		});
+
+		const after = comparison.createDiv({
+			cls: "anki-analysis-comparison-side"
+		});
+
+		after.createEl("strong", {
+			text: "After"
+		});
+
+		after.createDiv({
+			text: `Front: ${operation.flashcard.front}`
+		});
+
+		after.createDiv({
+			text: `Back: ${operation.flashcard.back}`
+		});
+	}
+
 	private renderAnalysisActions(): void {
 		const actions = this.contentEl.createDiv({
-			cls: "anki-export-actions",
+			cls: "anki-export-actions"
 		});
+
 		const backButton = actions.createEl("button", {
-			text: "Back",
+			text: "Back"
 		});
+		backButton.type = "button";
 		backButton.addEventListener("click", () => {
 			this.renderExportStep();
-		},);
-		const exportButton = actions.createEl("button", {
-			text: "Export Flashcards", cls: "mod-cta",
 		});
-		exportButton.addEventListener("click", () => {
+
+		this.exportButton = actions.createEl("button", {
+			text: "Export Flashcards", cls: "mod-cta"
+		});
+		this.exportButton.type = "button";
+		this.exportButton.addEventListener("click", () => {
 			void this.handleExport();
-		},);
+		});
 	}
 
 	private async handleExport(): Promise<void> {

@@ -34,3 +34,56 @@
 	gap: 0.5rem;
 	margin-top: 1.5rem;
 }
+
+.anki-analysis-summary {
+	margin-bottom: 1rem;
+}
+
+.anki-analysis-section {
+	margin-bottom: 0.75rem;
+}
+
+.anki-analysis-section-toggle {
+	width: 100%;
+	text-align: left;
+	font-weight: 600;
+}
+
+.anki-analysis-section-content {
+	margin-top: 0.5rem;
+	max-height: 300px;
+	overflow-y: auto;
+}
+
+.anki-analysis-card {
+	padding: 0.75rem;
+	margin-bottom: 0.5rem;
+	border: 1px solid grey;
+	border-radius: 6px;
+}
+
+.anki-analysis-card-front {
+	font-weight: 600;
+	margin-bottom: 0.25rem;
+}
+
+.anki-analysis-card-back {
+	opacity: 0.8;
+}
+
+.anki-analysis-card-meta {
+	display: block;
+	margin-top: 0.5rem;
+	opacity: 0.7;
+}
+
+.anki-analysis-comparison {
+	display: flex;
+	gap: 1rem;
+	margin-top: 0.5rem;
+}
+
+.anki-analysis-comparison-side {
+	flex: 1;
+	min-width: 0;
+}
