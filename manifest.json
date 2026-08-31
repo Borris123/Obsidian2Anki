@@ -1,9 +1,9 @@
 {
 	"id": "anki-exporter",
 	"name": "Anki Exporter",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "1.13.0",
-	"description": "Exports Obsidian Markdown to Anki Flashcards.",
+	"description": "Exports Markdown to Anki Flashcards.",
 	"author": "Erik Mielke",
 	"authorUrl": "https://github.com/erikmielke",
 	"fundingUrl": "https://buymeacoffee.com/erikmielke",
