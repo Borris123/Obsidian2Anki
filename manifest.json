@@ -1,7 +1,7 @@
 {
 	"id": "anki-exporter",
 	"name": "Anki Exporter",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"minAppVersion": "1.13.0",
 	"description": "Exports Markdown to Anki Flashcards.",
 	"author": "Erik Mielke",
